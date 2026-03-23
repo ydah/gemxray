@@ -4,11 +4,11 @@ require "fileutils"
 require "json"
 require "tmpdir"
 
-require "gem_sweeper"
+require "gemxray"
 
 module ProjectFixtureHelper
   def with_project(files)
-    Dir.mktmpdir("gem-sweeper") do |dir|
+    Dir.mktmpdir("gemxray") do |dir|
       files.each do |path, content|
         absolute_path = File.join(dir, path)
         FileUtils.mkdir_p(File.dirname(absolute_path))
@@ -178,10 +178,10 @@ module ProjectFixtureHelper
   end
 
   def build_config(project_dir, **options)
-    GemSweeper::Config.load(
+    GemXray::Config.load(
       {
         gemfile_path: File.join(project_dir, "Gemfile"),
-        config_path: File.join(project_dir, ".gem-sweeper.yml")
+        config_path: File.join(project_dir, ".gemxray.yml")
       }.merge(options)
     )
   end

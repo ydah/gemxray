@@ -1,6 +1,6 @@
-# GemSweeper
+# GemXray
 
-`gem-sweeper` is a CLI for finding gems that can likely be removed from a project `Gemfile`.
+`gemxray` is a CLI for finding gems that can likely be removed from a project `Gemfile`.
 
 It combines three signals:
 
@@ -13,13 +13,13 @@ It combines three signals:
 Add the gem to your toolchain:
 
 ```bash
-bundle add gem_sweeper --group development
+bundle add gemxray --group development
 ```
 
 Or install it directly:
 
 ```bash
-gem install gem_sweeper
+gem install gemxray
 ```
 
 ## Usage
@@ -27,38 +27,38 @@ gem install gem_sweeper
 Run a scan in the current project:
 
 ```bash
-bundle exec gem-sweeper scan
+bundle exec gemxray scan
 ```
 
 Use JSON or YAML output for CI or scripting:
 
 ```bash
-bundle exec gem-sweeper scan --format json
-bundle exec gem-sweeper scan --format yaml --ci
+bundle exec gemxray scan --format json
+bundle exec gemxray scan --format yaml --ci
 ```
 
 Limit the analyzers:
 
 ```bash
-bundle exec gem-sweeper scan --only unused,version
+bundle exec gemxray scan --only unused,version
 ```
 
 Interactively remove candidates from `Gemfile`:
 
 ```bash
-bundle exec gem-sweeper clean
+bundle exec gemxray clean
 ```
 
 Apply only high-confidence removals without prompting:
 
 ```bash
-bundle exec gem-sweeper clean --auto-fix
+bundle exec gemxray clean --auto-fix
 ```
 
 Generate a cleanup branch and open a GitHub PR with `gh`:
 
 ```bash
-bundle exec gem-sweeper pr --bundle
+bundle exec gemxray pr --bundle
 ```
 
 If `gh` is unavailable, the PR command can fall back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
@@ -66,12 +66,12 @@ If `gh` is unavailable, the PR command can fall back to the GitHub API when `GH_
 Generate a starter config:
 
 ```bash
-bundle exec gem-sweeper init
+bundle exec gemxray init
 ```
 
 ## Config
 
-`gem-sweeper` looks for `.gem-sweeper.yml` in the working directory.
+`gemxray` looks for `.gemxray.yml` in the working directory.
 
 ```yaml
 version: 1
@@ -109,7 +109,7 @@ github:
 : Create a branch, commit Gemfile cleanup, and open a PR with GitHub CLI.
 
 `init`
-: Write `.gem-sweeper.yml`.
+: Write `.gemxray.yml`.
 
 `version`
 : Print the gem version.
@@ -134,5 +134,5 @@ bundle exec rspec
 Run the executable locally:
 
 ```bash
-ruby exe/gem-sweeper scan --format terminal
+ruby exe/gemxray scan --format terminal
 ```
