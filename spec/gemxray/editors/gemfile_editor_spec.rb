@@ -54,4 +54,24 @@ RSpec.describe GemXray::Editors::GemfileEditor do
       expect(File.read(gemfile_path)).not_to include('github: "example/fancy_tool"')
     end
   end
+
+  it "returns a preview during dry-run without mutating the file" do
+    with_project(sample_project_files) do |project_dir|
+      gemfile_path = File.join(project_dir, "Gemfile")
+      before = File.read(gemfile_path)
+      result = GemXray::Result.new(
+        gem_name: "net-imap",
+        gemfile_line: 5,
+        gemfile_end_line: 5,
+        reasons: [GemXray::Result::Reason.new(type: :unused, detail: "unused", severity: :danger)],
+        severity: :danger
+      )
+
+      outcome = described_class.new(gemfile_path).apply([result], dry_run: true, comment: false, backup: false)
+
+      expect(outcome.preview).to include("@@ Gemfile:5-5 net-imap @@")
+      expect(outcome.preview).to include('-gem "net-imap"')
+      expect(File.read(gemfile_path)).to eq(before)
+    end
+  end
 end

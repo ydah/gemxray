@@ -11,8 +11,9 @@ module GemXray
         else
           report.results.each do |result|
             lines << "[#{result.severity.to_s.upcase}] #{result.gem_name} (#{result.type_label})"
-            result.reasons.each do |reason|
-              lines << "  - #{reason.detail}"
+            result.reasons.each_with_index do |reason, index|
+              marker = index == result.reasons.length - 1 ? "`-" : "|-"
+              lines << "  #{marker} #{reason.detail}"
             end
             lines << ""
           end

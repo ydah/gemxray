@@ -74,6 +74,7 @@ module GemXray
       editor = Editors::GemfileEditor.new(config.gemfile_path)
       outcome = editor.apply(candidates, dry_run: config.dry_run?, comment: config.comment?, backup: true)
       out.puts("Candidates: #{candidates.map(&:gem_name).join(', ')}")
+      out.puts(outcome.preview) if config.dry_run? && !outcome.preview.to_s.empty?
       out.puts("Removed: #{outcome.removed.join(', ')}") unless outcome.removed.empty?
       out.puts("Skipped: #{outcome.skipped.join(', ')}") unless outcome.skipped.empty?
       if config.bundle_install? && !config.dry_run? && outcome.removed.any?

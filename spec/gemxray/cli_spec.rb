@@ -37,6 +37,8 @@ RSpec.describe GemXray::CLI do
 
       expect(code).to eq(0)
       expect(out.string).to include("net-imap")
+      expect(out.string).to include("@@ Gemfile:")
+      expect(out.string).to include('-gem "net-imap"')
       expect(File.read(gemfile_path)).to eq(before)
     end
   end
