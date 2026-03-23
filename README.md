@@ -1,39 +1,135 @@
 # GemSweeper
 
-TODO: Delete this and the text below, and describe your gem
+`gem-sweeper` is a CLI for finding gems that can likely be removed from a project `Gemfile`.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/gem_sweeper`. To experiment with that code, run `bin/console` for an interactive prompt.
+It combines three signals:
+
+1. Unused gems: no `require`, constant reference, gemspec dependency, or Rails auto-load signal was found.
+2. Redundant gems: another top-level gem already pulls the gem in through `Gemfile.lock`.
+3. Version-redundant gems: the gem is now covered by Ruby default gems or known Rails version changes.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
-
-Install the gem and add to the application's Gemfile by executing:
+Add the gem to your toolchain:
 
 ```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+bundle add gem_sweeper --group development
 ```
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+Or install it directly:
 
 ```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+gem install gem_sweeper
 ```
 
 ## Usage
 
-TODO: Write usage instructions here
+Run a scan in the current project:
+
+```bash
+bundle exec gem-sweeper scan
+```
+
+Use JSON or YAML output for CI or scripting:
+
+```bash
+bundle exec gem-sweeper scan --format json
+bundle exec gem-sweeper scan --format yaml --ci
+```
+
+Limit the analyzers:
+
+```bash
+bundle exec gem-sweeper scan --only unused,version
+```
+
+Interactively remove candidates from `Gemfile`:
+
+```bash
+bundle exec gem-sweeper clean
+```
+
+Apply only high-confidence removals without prompting:
+
+```bash
+bundle exec gem-sweeper clean --auto-fix
+```
+
+Generate a cleanup branch and open a GitHub PR with `gh`:
+
+```bash
+bundle exec gem-sweeper pr --bundle
+```
+
+Generate a starter config:
+
+```bash
+bundle exec gem-sweeper init
+```
+
+## Config
+
+`gem-sweeper` looks for `.gem-sweeper.yml` in the working directory.
+
+```yaml
+version: 1
+
+whitelist:
+  - bootsnap
+  - tzinfo-data
+
+scan_dirs:
+  - engines/billing/app
+  - engines/billing/lib
+
+overrides:
+  puma:
+    severity: ignore
+
+github:
+  base_branch: main
+  labels:
+    - dependencies
+    - cleanup
+  reviewers: []
+  per_gem: false
+```
+
+## Command Summary
+
+`scan`
+: Analyze the Gemfile and print a report.
+
+`clean`
+: Remove selected gems from `Gemfile`. `--auto-fix` only removes `danger` findings.
+
+`pr`
+: Create a branch, commit Gemfile cleanup, and open a PR with GitHub CLI.
+
+`init`
+: Write `.gem-sweeper.yml`.
+
+`version`
+: Print the gem version.
+
+## Notes
+
+- `clean` writes `Gemfile.bak` before mutating the file.
+- `clean --bundle` and `pr --bundle` run `bundle install` after editing.
+- stdgems data uses a cached remote payload when available and falls back to bundled offline data.
+- `pr` requires a clean enough git repository to create commits and `gh` configured for the target repository.
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+Setup and test:
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+```bash
+bundle install
+bundle exec rspec
+```
 
-## Contributing
+Run the executable locally:
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/gem_sweeper.
-
-## License
-
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+```bash
+ruby exe/gem-sweeper scan --format terminal
+```
