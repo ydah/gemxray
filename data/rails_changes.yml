@@ -1,0 +1,17 @@
+versions:
+  "7.0":
+    removals:
+      - gem: net-imap
+        reason: "Action Mailer / mail 周辺では個別追加が不要な構成が増えた"
+      - gem: net-pop
+        reason: "Action Mailer / mail 周辺では個別追加が不要な構成が増えた"
+      - gem: net-smtp
+        reason: "Action Mailer / mail 周辺では個別追加が不要な構成が増えた"
+  "7.1":
+    removals:
+      - gem: sprockets-rails
+        reason: "Propshaft や jsbundling-rails への移行候補になりやすい"
+  "7.2":
+    removals:
+      - gem: bootsnap
+        reason: "環境によっては Rails 側の起動最適化だけで十分なケースがある"
