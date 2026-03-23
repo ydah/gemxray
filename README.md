@@ -61,6 +61,8 @@ Generate a cleanup branch and open a GitHub PR with `gh`:
 bundle exec gem-sweeper pr --bundle
 ```
 
+If `gh` is unavailable, the PR command can fall back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
+
 Generate a starter config:
 
 ```bash
@@ -115,9 +117,10 @@ github:
 ## Notes
 
 - `clean` writes `Gemfile.bak` before mutating the file.
+- `clean` removes the full source range for multiline gem declarations.
 - `clean --bundle` and `pr --bundle` run `bundle install` after editing.
 - stdgems data uses a cached remote payload when available and falls back to bundled offline data.
-- `pr` requires a clean enough git repository to create commits and `gh` configured for the target repository.
+- `pr` requires a clean git worktree before it creates a branch and commits.
 
 ## Development
 
