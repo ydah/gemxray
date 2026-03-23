@@ -18,9 +18,9 @@ module GemSweeper
 
           detail =
             if gem_entry.development_group?
-              "コード内で未使用（group :development / :test）"
+              "no usage found in code (group :development / :test)"
             else
-              "コード内に require および定数参照が見つからない"
+              "no require or constant reference was found in the scanned code"
             end
 
           build_result(

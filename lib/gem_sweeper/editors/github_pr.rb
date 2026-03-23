@@ -93,8 +93,8 @@ module GemSweeper
 
           ## Checklist
 
-          - [ ] アプリ起動確認
-          - [ ] 主要ワークフロー確認
+          - [ ] App boot check
+          - [ ] Primary workflow check
           - [ ] `bundle exec rake spec`
         BODY
       end

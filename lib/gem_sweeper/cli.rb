@@ -67,15 +67,15 @@ module GemSweeper
       candidates = config.auto_fix? ? report.results.select(&:danger?) : interactive_selection(report.results)
 
       if candidates.empty?
-        out.puts("削除対象はありません。")
+        out.puts("No removable gems were selected.")
         return 0
       end
 
       editor = Editors::GemfileEditor.new(config.gemfile_path)
       outcome = editor.apply(candidates, dry_run: config.dry_run?, comment: config.comment?, backup: true)
-      out.puts("対象Gem: #{candidates.map(&:gem_name).join(', ')}")
-      out.puts("削除: #{outcome.removed.join(', ')}") unless outcome.removed.empty?
-      out.puts("スキップ: #{outcome.skipped.join(', ')}") unless outcome.skipped.empty?
+      out.puts("Candidates: #{candidates.map(&:gem_name).join(', ')}")
+      out.puts("Removed: #{outcome.removed.join(', ')}") unless outcome.removed.empty?
+      out.puts("Skipped: #{outcome.skipped.join(', ')}") unless outcome.skipped.empty?
       if config.bundle_install? && !config.dry_run? && outcome.removed.any?
         out.puts(editor.bundle_install!)
       end
@@ -86,7 +86,7 @@ module GemSweeper
       options = parse_pr_options(argv)
       config = Config.load(options)
       report = Scanner.new(config).run
-      raise Error, "PR対象がありません" if report.results.empty?
+      raise Error, "no PR candidates were found" if report.results.empty?
 
       result = Editors::GithubPr.new(config).create(
         report.results,

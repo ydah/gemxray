@@ -17,7 +17,7 @@ module GemSweeper
       @gem_name = gem_name
       @gemfile_line = gemfile_line
       @gemfile_group = gemfile_group
-      @suggestion = suggestion || "Gemfileから削除を検討"
+      @suggestion = suggestion || "Consider removing this entry from Gemfile"
       @reasons = reasons.dup
       @severity = severity || infer_severity
     end

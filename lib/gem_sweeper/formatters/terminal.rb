@@ -4,10 +4,10 @@ module GemSweeper
   module Formatters
     class Terminal
       def render(report)
-        lines = ["gem-sweeper scan results", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", ""]
+        lines = ["gem-sweeper scan results", "-----------------------------------------------------------------", ""]
 
         if report.results.empty?
-          lines << "問題は見つかりませんでした。"
+          lines << "No issues found."
         else
           report.results.each do |result|
             lines << "[#{result.severity.to_s.upcase}] #{result.gem_name} (#{result.type_label})"
@@ -19,8 +19,8 @@ module GemSweeper
         end
 
         summary = report.summary
-        lines << "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        lines << "検出: #{summary[:total]}件 (DANGER: #{summary[:danger]}, WARNING: #{summary[:warning]}, INFO: #{summary[:info]})"
+        lines << "-----------------------------------------------------------------"
+        lines << "Found: #{summary[:total]} (DANGER: #{summary[:danger]}, WARNING: #{summary[:warning]}, INFO: #{summary[:info]})"
         lines.join("\n")
       end
     end

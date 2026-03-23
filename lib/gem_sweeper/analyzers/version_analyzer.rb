@@ -16,7 +16,7 @@ module GemSweeper
               gem_entry: gem_entry,
               type: :version_redundant,
               severity: :warning,
-              detail: "Ruby #{ruby_version} のdefault gemのため明示不要"
+              detail: "Ruby #{ruby_version} already ships this as a default gem"
             )
           end
 
@@ -27,7 +27,7 @@ module GemSweeper
             gem_entry: gem_entry,
             type: :version_redundant,
             severity: :warning,
-            detail: "Rails #{change.since} 以降では #{change.reason}"
+            detail: "since Rails #{change.since}, #{change.reason}"
           )
         end
       end

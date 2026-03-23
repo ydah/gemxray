@@ -16,7 +16,7 @@ module GemSweeper
           )
           next unless path
 
-          detail = "#{path.first} の依存としてインストール済み"
+          detail = "already installed as a dependency of #{path.first}"
           detail = "#{detail} (#{path.join(' -> ')})" if path.length > 2
 
           build_result(
