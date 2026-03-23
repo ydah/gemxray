@@ -34,4 +34,24 @@ RSpec.describe GemSweeper::Editors::GemfileEditor do
       expect(File.read(gemfile_path)).to include("# Removed by gem-sweeper: net-imap")
     end
   end
+
+  it "removes multiline declarations using the full source range" do
+    with_project(multiline_project_files) do |project_dir|
+      gemfile_path = File.join(project_dir, "Gemfile")
+      parser = GemSweeper::GemfileParser.new(gemfile_path)
+      fancy_tool = parser.parse.find { |entry| entry.name == "fancy_tool" }
+      result = GemSweeper::Result.new(
+        gem_name: "fancy_tool",
+        gemfile_line: fancy_tool.line_number,
+        gemfile_end_line: fancy_tool.end_line,
+        reasons: [GemSweeper::Result::Reason.new(type: :unused, detail: "unused", severity: :danger)],
+        severity: :danger
+      )
+
+      described_class.new(gemfile_path).apply([result], dry_run: false, comment: false, backup: false)
+
+      expect(File.read(gemfile_path)).not_to include('gem "fancy_tool"')
+      expect(File.read(gemfile_path)).not_to include('github: "example/fancy_tool"')
+    end
+  end
 end

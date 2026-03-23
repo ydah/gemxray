@@ -25,18 +25,20 @@ module GemSweeper
 
     def find_path(root, target, max_depth)
       visited = Set.new([root])
-      queue = [[root, [root], 0]]
+      queue = [[root, [root], [], 0]]
 
       until queue.empty?
-        current, path, depth = queue.shift
+        current, path, edges, depth = queue.shift
         next if depth >= max_depth
 
-        Array(dependency_tree[current]).each do |child|
-          return path + [child] if child == target
-          next if visited.include?(child)
+        Array(dependency_tree[current]).each do |edge|
+          child = edge.name
+          next if visited.include?(child) && child != target
+
+          return { gems: path + [child], edges: edges + [edge] } if child == target
 
           visited << child
-          queue << [child, path + [child], depth + 1]
+          queue << [child, path + [child], edges + [edge], depth + 1]
         end
       end
 

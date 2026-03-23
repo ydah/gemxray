@@ -4,6 +4,8 @@ require "bundler"
 
 module GemSweeper
   class GemfileParser
+    DependencyEdge = Struct.new(:name, :requirement, keyword_init: true)
+
     attr_reader :gemfile_path, :lockfile_path
 
     def initialize(gemfile_path)
@@ -14,10 +16,10 @@ module GemSweeper
     def parse
       @parse ||= begin
         dependencies = bundler_dependencies
-        metadata = declaration_metadata
+        metadata = source_metadata.group_by(&:name)
 
         if dependencies.empty?
-          parse_with_regex(metadata)
+          source_metadata.map { |entry| build_entry_from_metadata(entry, []) }
         else
           dependencies.map do |dependency|
             build_entry_from_dependency(dependency, metadata)
@@ -31,7 +33,9 @@ module GemSweeper
       return {} unless parser
 
       parser.specs.each_with_object({}) do |spec, tree|
-        tree[spec.name] = spec.dependencies.map(&:name)
+        tree[spec.name] = spec.dependencies.map do |dependency|
+          DependencyEdge.new(name: dependency.name, requirement: dependency.requirement)
+        end
       end
     end
 
@@ -56,6 +60,13 @@ module GemSweeper
       dependency.version.to_s[/\d+\.\d+(?:\.\d+)?/]
     end
 
+    def resolved_version(gem_name)
+      parser = lockfile_parser
+      return nil unless parser
+
+      parser.specs.find { |spec| spec.name == gem_name }&.version
+    end
+
     private
 
     def bundler_dependencies
@@ -65,14 +76,31 @@ module GemSweeper
     end
 
     def build_entry_from_dependency(dependency, metadata)
-      declaration = metadata.fetch(dependency.name, []).shift || {}
+      declaration = metadata.fetch(dependency.name, []).shift
+      declaration ||= GemfileSourceParser::Metadata.new(name: dependency.name, options: {})
       GemEntry.new(
         name: dependency.name,
         version: normalized_requirement(dependency.requirement),
-        groups: dependency.groups,
-        line_number: declaration[:line_number],
-        source_line: declaration[:source_line],
-        autorequire: dependency.autorequire
+        groups: dependency.groups.empty? ? declaration.groups : dependency.groups,
+        line_number: declaration.line_number,
+        end_line: declaration.end_line,
+        source_line: declaration.source_line,
+        autorequire: declaration.options.fetch(:require, dependency.autorequire),
+        options: declaration.options
+      )
+    end
+
+    def build_entry_from_metadata(metadata_entry, default_groups)
+      options = metadata_entry.options
+      GemEntry.new(
+        name: metadata_entry.name,
+        version: metadata_entry.version,
+        groups: default_groups + metadata_entry.groups.to_a + extract_inline_groups(options),
+        line_number: metadata_entry.line_number,
+        end_line: metadata_entry.end_line,
+        source_line: metadata_entry.source_line,
+        autorequire: options[:require],
+        options: options
       )
     end
 
@@ -83,49 +111,15 @@ module GemSweeper
       text.empty? || text == ">= 0" ? nil : text
     end
 
-    def declaration_metadata
-      return {} unless File.exist?(gemfile_path)
-
-      File.readlines(gemfile_path, chomp: true).each_with_index.with_object(Hash.new { |hash, key| hash[key] = [] }) do |(line, index), hash|
-        match = line.match(/^\s*gem\s+["']([^"']+)["']/)
-        next unless match
-
-        hash[match[1]] << { line_number: index + 1, source_line: line }
-      end
+    def source_metadata
+      @source_metadata ||= GemfileSourceParser.new(gemfile_path).parse
     end
 
-    def parse_with_regex(metadata)
-      groups = []
-      entries = []
-
-      File.readlines(gemfile_path, chomp: true).each_with_index do |line, index|
-        stripped = line.sub(/\s+#.*$/, "").strip
-        next if stripped.empty?
-
-        if (group_match = stripped.match(/^group\s+\(?(.+?)\)?\s+do$/))
-          groups << group_match[1].split(",").map { |item| item.delete(": ").to_sym }
-          next
-        end
-
-        if stripped == "end"
-          groups.pop
-          next
-        end
-
-        gem_match = stripped.match(/^gem\s+["']([^"']+)["'](?:\s*,\s*["']([^"']+)["'])?/)
-        next unless gem_match
-
-        declaration = metadata.fetch(gem_match[1], []).find { |item| item[:line_number] == index + 1 } || {}
-        entries << GemEntry.new(
-          name: gem_match[1],
-          version: gem_match[2],
-          groups: groups.flatten,
-          line_number: declaration[:line_number] || index + 1,
-          source_line: declaration[:source_line] || line
-        )
-      end
-
-      entries
+    def extract_inline_groups(options)
+      values = []
+      values.concat(Array(options[:group]))
+      values.concat(Array(options[:groups]))
+      values.map { |value| value.to_s.delete_prefix(":").to_sym }
     end
 
     def lockfile_parser

@@ -9,6 +9,7 @@ module GemSweeper
   class StdgemsClient
     CACHE_TTL = 86_400
     DEFAULT_GEMS_URI = URI("https://stdgems.org/default_gems.json")
+    BUNDLED_GEMS_URI = URI("https://stdgems.org/bundled_gems.json")
     FALLBACK_DEFAULT_GEMS = {
       "3.1" => %w[
         abbrev base64 benchmark bigdecimal cgi csv date delegate did_you_mean
@@ -46,41 +47,49 @@ module GemSweeper
 
     def default_gems_for(version)
       version_key = normalize_version(version)
-      cached_or_remote = cached_payload || fetch_and_cache_payload
-      extracted = extract_default_gems(cached_or_remote, version_key)
+      extracted = extract_default_gems(payload_for(:default), version_key)
 
       return extracted if extracted && !extracted.empty?
 
       fallback_default_gems(version_key)
     end
 
+    def bundled_gems_for(version)
+      version_key = normalize_version(version)
+      extract_default_gems(payload_for(:bundled), version_key) || []
+    end
+
     private
 
     attr_reader :cache_dir
 
-    def cache_path
-      File.join(cache_dir, "default_gems.json")
+    def cache_path(kind)
+      File.join(cache_dir, "#{kind}_gems.json")
     end
 
     def normalize_version(version)
       version.to_s[/\d+\.\d+/] || RUBY_VERSION[/\d+\.\d+/]
     end
 
-    def cached_payload
-      return nil unless File.exist?(cache_path)
-      return nil if Time.now - File.mtime(cache_path) > CACHE_TTL
+    def payload_for(kind)
+      cached_payload(kind) || fetch_and_cache_payload(kind)
+    end
 
-      JSON.parse(File.read(cache_path))
+    def cached_payload(kind)
+      return nil unless File.exist?(cache_path(kind))
+      return nil if Time.now - File.mtime(cache_path(kind)) > CACHE_TTL
+
+      JSON.parse(File.read(cache_path(kind)))
     rescue StandardError
       nil
     end
 
-    def fetch_and_cache_payload
-      response = Net::HTTP.get_response(DEFAULT_GEMS_URI)
+    def fetch_and_cache_payload(kind)
+      response = Net::HTTP.get_response(kind == :bundled ? BUNDLED_GEMS_URI : DEFAULT_GEMS_URI)
       return nil unless response.is_a?(Net::HTTPSuccess)
 
       FileUtils.mkdir_p(cache_dir)
-      File.write(cache_path, response.body)
+      File.write(cache_path(kind), response.body)
       JSON.parse(response.body)
     rescue StandardError
       nil

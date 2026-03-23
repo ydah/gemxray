@@ -45,6 +45,7 @@ module GemSweeper
       dependency_resolver = DependencyResolver.new(gemfile_parser.dependency_tree)
       stdgems_client = StdgemsClient.new
       rails_knowledge = RailsKnowledge.new
+      gem_metadata_resolver = GemMetadataResolver.new
 
       selected.map do |type|
         ANALYZERS.fetch(type).new(
@@ -53,7 +54,8 @@ module GemSweeper
           code_snapshot: code_snapshot,
           dependency_resolver: dependency_resolver,
           stdgems_client: stdgems_client,
-          rails_knowledge: rails_knowledge
+          rails_knowledge: rails_knowledge,
+          gem_metadata_resolver: gem_metadata_resolver
         )
       end
     end

@@ -7,6 +7,7 @@ module GemSweeper
         ruby_version = gemfile_parser.ruby_version
         rails_version = gemfile_parser.rails_version(gems)
         default_gems = stdgems_client.default_gems_for(ruby_version)
+        bundled_gems = stdgems_client.bundled_gems_for(ruby_version)
 
         gems.each_with_object([]) do |gem_entry, results|
           next if skipped?(gem_entry)
@@ -17,6 +18,13 @@ module GemSweeper
               type: :version_redundant,
               severity: :warning,
               detail: "Ruby #{ruby_version} already ships this as a default gem"
+            )
+          elsif bundled_gems.include?(gem_entry.name) && !gem_entry.pinned_version?
+            results << build_result(
+              gem_entry: gem_entry,
+              type: :version_redundant,
+              severity: :warning,
+              detail: "Ruby #{ruby_version} already ships this as a bundled gem"
             )
           end
 

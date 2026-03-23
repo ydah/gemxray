@@ -10,12 +10,14 @@ module GemSweeper
       end
     end
 
-    attr_reader :gem_name, :gemfile_line, :gemfile_group, :suggestion, :reasons
+    attr_reader :gem_name, :gemfile_line, :gemfile_end_line, :gemfile_group, :suggestion, :reasons
     attr_accessor :severity
 
-    def initialize(gem_name:, gemfile_line: nil, gemfile_group: nil, suggestion: nil, reasons: [], severity: nil)
+    def initialize(gem_name:, gemfile_line: nil, gemfile_end_line: nil, gemfile_group: nil, suggestion: nil,
+                   reasons: [], severity: nil)
       @gem_name = gem_name
       @gemfile_line = gemfile_line
+      @gemfile_end_line = gemfile_end_line || gemfile_line
       @gemfile_group = gemfile_group
       @suggestion = suggestion || "Consider removing this entry from Gemfile"
       @reasons = reasons.dup
@@ -33,6 +35,7 @@ module GemSweeper
         add_reason(type: reason.type, detail: reason.detail, severity: reason.severity)
       end
       self.gemfile_line ||= other.gemfile_line
+      self.gemfile_end_line ||= other.gemfile_end_line
       self.gemfile_group ||= other.gemfile_group
       self.suggestion ||= other.suggestion
       self
@@ -71,7 +74,7 @@ module GemSweeper
 
     protected
 
-    attr_writer :gemfile_line, :gemfile_group, :suggestion
+    attr_writer :gemfile_line, :gemfile_end_line, :gemfile_group, :suggestion
 
     private
 

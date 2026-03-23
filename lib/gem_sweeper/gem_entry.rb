@@ -2,15 +2,18 @@
 
 module GemSweeper
   class GemEntry
-    attr_reader :name, :version, :groups, :line_number, :source_line, :autorequire
+    attr_reader :name, :version, :groups, :line_number, :end_line, :source_line, :autorequire, :options
 
-    def initialize(name:, version: nil, groups: [], line_number: nil, source_line: nil, autorequire: nil)
+    def initialize(name:, version: nil, groups: [], line_number: nil, end_line: nil, source_line: nil, autorequire: nil,
+                   options: {})
       @name = name
       @version = normalize_version(version)
       @groups = Array(groups).map(&:to_sym).reject { |group| group == :default }.uniq
       @line_number = line_number
+      @end_line = end_line || line_number
       @source_line = source_line
       @autorequire = autorequire
+      @options = options
     end
 
     def pinned_version?
@@ -28,18 +31,21 @@ module GemSweeper
       groups.map(&:to_s)
     end
 
-    def require_names
-      candidates =
-        case autorequire
-        when false
-          []
-        when nil
-          default_require_names
-        else
-          Array(autorequire).compact.map(&:to_s)
-        end
+    def line_range
+      return nil unless line_number
 
-      (candidates + default_require_names).uniq
+      line_number..(end_line || line_number)
+    end
+
+    def require_names
+      case autorequire
+      when false
+        []
+      when nil
+        default_require_names
+      else
+        Array(autorequire).compact.map(&:to_s).uniq
+      end
     end
 
     private

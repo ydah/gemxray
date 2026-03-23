@@ -18,15 +18,23 @@ module GemSweeper
 
         results.sort_by { |result| -(result.gemfile_line || 0) }.each do |result|
           line_number = result.gemfile_line
+          end_line = result.gemfile_end_line || line_number
           if !line_number || !gem_line?(lines[line_number - 1], result.gem_name)
             skipped << result.gem_name
             next
           end
 
+          replacement =
+            if comment
+              ["#{leading_whitespace(lines[line_number - 1])}# Removed by gem-sweeper: #{comment_summary(result)}\n"]
+            else
+              []
+            end
+
           if comment
-            lines[line_number - 1] = "# Removed by gem-sweeper: #{result.gem_name} (#{result.type_label})\n"
+            lines[(line_number - 1)..(end_line - 1)] = replacement
           else
-            lines.delete_at(line_number - 1)
+            lines[(line_number - 1)..(end_line - 1)] = replacement
           end
 
           removed << result.gem_name
@@ -57,6 +65,14 @@ module GemSweeper
 
       def gem_line?(line, gem_name)
         line && line.match?(/^\s*gem\s+["']#{Regexp.escape(gem_name)}["']/)
+      end
+
+      def comment_summary(result)
+        "#{result.gem_name} - #{result.reasons.map(&:detail).join(' / ')}"
+      end
+
+      def leading_whitespace(line)
+        line[/\A\s*/] || ""
       end
 
       def project_root

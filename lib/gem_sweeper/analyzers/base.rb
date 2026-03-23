@@ -11,18 +11,20 @@ module GemSweeper
       ].freeze
 
       def initialize(config:, gemfile_parser:, code_snapshot: nil, dependency_resolver: nil, stdgems_client: nil,
-                     rails_knowledge: nil)
+                     rails_knowledge: nil, gem_metadata_resolver: GemMetadataResolver.new)
         @config = config
         @gemfile_parser = gemfile_parser
         @code_snapshot = code_snapshot
         @dependency_resolver = dependency_resolver
         @stdgems_client = stdgems_client
         @rails_knowledge = rails_knowledge
+        @gem_metadata_resolver = gem_metadata_resolver
       end
 
       private
 
-      attr_reader :config, :gemfile_parser, :code_snapshot, :dependency_resolver, :stdgems_client, :rails_knowledge
+      attr_reader :config, :gemfile_parser, :code_snapshot, :dependency_resolver, :stdgems_client, :rails_knowledge,
+                  :gem_metadata_resolver
 
       def skipped?(gem_entry)
         config.whitelisted?(gem_entry.name) || config.ignore_gem?(gem_entry.name)
@@ -32,6 +34,7 @@ module GemSweeper
         Result.new(
           gem_name: gem_entry.name,
           gemfile_line: gem_entry.line_number,
+          gemfile_end_line: gem_entry.end_line,
           gemfile_group: gem_entry.gemfile_group,
           reasons: [Result::Reason.new(type: type, detail: detail, severity: severity)],
           severity: severity
@@ -43,38 +46,13 @@ module GemSweeper
       end
 
       def constant_candidates(gem_name)
-        parts = gem_name.split(%r{[/_-]}).reject(&:empty?)
-        return [] if parts.empty?
-
-        camelized = parts.map { |part| camelize(part) }
-        [camelized.join, camelized.join("::")].uniq
+        gem_metadata_resolver.constant_candidates_for(gem_name)
       end
 
       def autoloaded_gem?(gem_entry)
         return true if AUTOLOADED_GEMS.include?(gem_entry.name)
 
-        gem_has_railtie?(gem_entry.name)
-      end
-
-      def gem_has_railtie?(gem_name)
-        @railtie_cache ||= {}
-        return @railtie_cache[gem_name] if @railtie_cache.key?(gem_name)
-
-        @railtie_cache[gem_name] = Gem::Specification.find_all_by_name(gem_name).any? do |spec|
-          spec.require_paths.any? do |directory|
-            Dir.glob(File.join(spec.full_gem_path, directory, "**/*.rb")).any? do |file|
-              File.read(file, encoding: "utf-8").match?(/Rails::(?:Railtie|Engine)/)
-            rescue StandardError
-              false
-            end
-          end
-        end
-      rescue StandardError
-        @railtie_cache[gem_name] = false
-      end
-
-      def camelize(value)
-        value.split("_").map { |part| part[0]&.upcase.to_s + part[1..] }.join
+        gem_metadata_resolver.railtie?(gem_entry.name)
       end
     end
   end

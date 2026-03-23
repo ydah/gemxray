@@ -86,6 +86,97 @@ module ProjectFixtureHelper
     }
   end
 
+  def multiline_project_files
+    {
+      "Gemfile" => <<~RUBY,
+        source "https://rubygems.org"
+
+        gem "rails", "~> 7.1"
+        gem "mail",
+          require: ["mail"],
+          group: :production
+        gem "fancy_tool",
+          github: "example/fancy_tool",
+          require: false
+
+        group :development, :test do
+          gem "awesome_print",
+            require: false
+        end
+      RUBY
+      "Gemfile.lock" => <<~LOCK,
+        GEM
+          remote: https://rubygems.org/
+          specs:
+            actionmailer (7.1.3)
+              mail (>= 2.8.1)
+            awesome_print (1.9.2)
+            fancy_tool (1.0.0)
+            mail (2.8.1)
+            rails (7.1.3)
+              actionmailer (= 7.1.3)
+
+        PLATFORMS
+          ruby
+
+        DEPENDENCIES
+          awesome_print
+          fancy_tool!
+          mail
+          rails (~> 7.1)
+
+        RUBY VERSION
+           ruby 3.2.2p53
+
+        BUNDLED WITH
+           2.5.10
+      LOCK
+      "config/application.rb" => <<~RUBY,
+        require "rails"
+        Mail::Message
+      RUBY
+    }
+  end
+
+  def incompatible_redundant_project_files
+    {
+      "Gemfile" => <<~RUBY,
+        source "https://rubygems.org"
+
+        gem "mail", "~> 3.0"
+        gem "net-imap"
+        gem "rails", "~> 7.1"
+      RUBY
+      "Gemfile.lock" => <<~LOCK,
+        GEM
+          remote: https://rubygems.org/
+          specs:
+            actionmailer (7.1.3)
+              mail (>= 2.8.1)
+            mail (2.8.1)
+              net-imap
+            net-imap (0.4.9)
+            rails (7.1.3)
+              actionmailer (= 7.1.3)
+
+        PLATFORMS
+          ruby
+
+        DEPENDENCIES
+          mail (~> 3.0)
+          net-imap
+          rails (~> 7.1)
+
+        RUBY VERSION
+           ruby 3.2.2p53
+
+        BUNDLED WITH
+           2.5.10
+      LOCK
+      "config/application.rb" => "require \"rails\"\n"
+    }
+  end
+
   def build_config(project_dir, **options)
     GemSweeper::Config.load(
       {
