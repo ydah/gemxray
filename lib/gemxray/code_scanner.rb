@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "etc"
 require "find"
 require "set"
 
@@ -51,13 +52,10 @@ module GemXray
       dependency_names = Set.new
       files = scan_files
 
-      files.each do |path|
-        content = File.read(path, encoding: "utf-8")
-        extract_requires(content).each { |value| requires << value }
-        content.scan(CONSTANT_PATTERN).each { |value| constants << value }
-        content.scan(GEMSPEC_DEPENDENCY_PATTERN).flatten.each { |value| dependency_names << value }
-      rescue ArgumentError, Errno::ENOENT
-        next
+      scan_payloads(files).each do |payload|
+        payload[:requires].each { |value| requires << value }
+        payload[:constants].each { |value| constants << value }
+        payload[:dependency_names].each { |value| dependency_names << value }
       end
 
       Snapshot.new(
@@ -71,6 +69,28 @@ module GemXray
     private
 
     attr_reader :config
+
+    def scan_payloads(files)
+      count = [files.length, worker_count].min
+      return files.filter_map { |path| scan_file(path) } if count <= 1
+
+      queue = Queue.new
+      files.each { |path| queue << path }
+      count.times { queue << nil }
+
+      Array.new(count) do
+        Thread.new do
+          payloads = []
+
+          while (path = queue.pop)
+            payload = scan_file(path)
+            payloads << payload if payload
+          end
+
+          payloads
+        end
+      end.flat_map(&:value)
+    end
 
     def scan_files
       root = config.project_root
@@ -96,6 +116,24 @@ module GemXray
       Dir.glob(File.join(root, "*.gemspec")).each { |path| paths << path }
 
       paths.uniq
+    end
+
+    def scan_file(path)
+      content = File.read(path, encoding: "utf-8")
+      {
+        requires: extract_requires(content),
+        constants: content.scan(CONSTANT_PATTERN),
+        dependency_names: content.scan(GEMSPEC_DEPENDENCY_PATTERN).flatten
+      }
+    rescue ArgumentError, Errno::ENOENT
+      nil
+    end
+
+    def worker_count
+      cpu_count = Etc.nprocessors
+      [[cpu_count, 2].max, 8].min
+    rescue StandardError
+      4
     end
 
     def extract_requires(content)

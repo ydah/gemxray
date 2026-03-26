@@ -96,8 +96,17 @@ module GemXray
         comment: config.comment?
       )
 
-      out.puts("Branch: #{result[:branch]}")
-      out.puts("PR: #{result[:pr_url]}")
+      pull_requests = Array(result[:pull_requests])
+      if pull_requests.length <= 1
+        out.puts("Branch: #{result[:branch]}")
+        out.puts("PR: #{result[:pr_url]}")
+      else
+        out.puts("Created #{pull_requests.length} PRs:")
+        pull_requests.each do |pull_request|
+          label = pull_request[:gem_name] || Array(pull_request[:gem_names]).join(", ")
+          out.puts("#{label}: #{pull_request[:pr_url]} (#{pull_request[:branch]})")
+        end
+      end
       0
     end
 
@@ -152,7 +161,7 @@ module GemXray
         common_options(parser, options)
         parser.on("--bundle", "run bundle install before committing") { options[:bundle_install] = true }
         parser.on("--comment", "leave comments in Gemfile instead of deleting lines") { options[:comment] = true }
-        parser.on("--per-gem", "create one commit per gem") { options[:per_gem] = true }
+        parser.on("--per-gem", "create one PR per gem") { options[:per_gem] = true }
       end.parse!(argv)
 
       options

@@ -98,7 +98,7 @@ RSpec.describe GemXray::StdgemsClient do
   end
 
   describe "#bundled_gems_for" do
-    it "returns empty array when network fails and no cache" do
+    it "returns fallback bundled gems when network fails and no cache" do
       client = described_class.new(cache_dir: Dir.mktmpdir("gemxray_test"))
 
       allow(Net::HTTP).to receive(:get_response).and_return(
@@ -107,13 +107,13 @@ RSpec.describe GemXray::StdgemsClient do
 
       gems = client.bundled_gems_for("3.2.0")
 
-      expect(gems).to eq([])
+      expect(gems).to include("minitest", "rake", "rbs")
     end
 
     it "returns bundled gems from cached data" do
       Dir.mktmpdir("gemxray_test") do |cache_dir|
         cache_path = File.join(cache_dir, "bundled_gems.json")
-        payload = { "default_gems" => { "3.2" => %w[minitest power_assert] } }
+        payload = { "bundled_gems" => { "3.2" => %w[minitest power_assert] } }
         File.write(cache_path, JSON.generate(payload))
 
         client = described_class.new(cache_dir: cache_dir)

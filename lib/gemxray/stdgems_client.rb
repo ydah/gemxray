@@ -40,6 +40,12 @@ module GemXray
       ],
       "4.0" => Gem::Specification.select { |spec| spec.respond_to?(:default_gem?) && spec.default_gem? }.map(&:name).sort
     }.freeze
+    FALLBACK_BUNDLED_GEMS = {
+      "3.1" => %w[debug matrix minitest power_assert racc rake rbs rexml test-unit typeprof],
+      "3.2" => %w[debug matrix minitest power_assert racc rake rbs rexml test-unit typeprof],
+      "3.3" => %w[debug matrix minitest power_assert racc rake rbs rexml test-unit typeprof],
+      "4.0" => %w[debug matrix minitest power_assert racc rake rbs rexml test-unit typeprof]
+    }.freeze
 
     def initialize(cache_dir: File.join(Dir.home, ".gemxray", "cache"))
       @cache_dir = cache_dir
@@ -47,7 +53,7 @@ module GemXray
 
     def default_gems_for(version)
       version_key = normalize_version(version)
-      extracted = extract_default_gems(payload_for(:default), version_key)
+      extracted = extract_gems(payload_for(:default), version_key, collection_keys: %w[default_gems])
 
       return extracted if extracted && !extracted.empty?
 
@@ -56,7 +62,11 @@ module GemXray
 
     def bundled_gems_for(version)
       version_key = normalize_version(version)
-      extract_default_gems(payload_for(:bundled), version_key) || []
+      extracted = extract_gems(payload_for(:bundled), version_key, collection_keys: %w[bundled_gems default_gems])
+
+      return extracted if extracted && !extracted.empty?
+
+      fallback_bundled_gems(version_key)
     end
 
     private
@@ -95,23 +105,24 @@ module GemXray
       nil
     end
 
-    def extract_default_gems(payload, version_key)
+    def extract_gems(payload, version_key, collection_keys:)
       return nil unless payload
 
       case payload
       when Hash
-        extract_from_hash(payload, version_key)
+        extract_from_hash(payload, version_key, collection_keys)
       when Array
         extract_from_array(payload, version_key)
       end
     end
 
-    def extract_from_hash(payload, version_key)
-      candidates = [
-        payload[version_key],
-        payload.dig("default_gems", version_key),
-        payload.dig(version_key, "default_gems")
-      ].compact
+    def extract_from_hash(payload, version_key, collection_keys)
+      candidates = [payload[version_key]]
+      collection_keys.each do |key|
+        candidates << payload.dig(key, version_key)
+        candidates << payload.dig(version_key, key)
+      end
+      candidates.compact!
 
       return normalize_payload_list(candidates.first) unless candidates.empty?
 
@@ -151,6 +162,14 @@ module GemXray
 
       major_minor = FALLBACK_DEFAULT_GEMS.keys.sort.reverse.find { |key| key <= version_key }
       FALLBACK_DEFAULT_GEMS[major_minor] || []
+    end
+
+    def fallback_bundled_gems(version_key)
+      exact = FALLBACK_BUNDLED_GEMS[version_key]
+      return exact if exact
+
+      major_minor = FALLBACK_BUNDLED_GEMS.keys.sort.reverse.find { |key| key <= version_key }
+      FALLBACK_BUNDLED_GEMS[major_minor] || []
     end
   end
 end

@@ -3,8 +3,10 @@
 module GemXray
   module Formatters
     class Terminal
+      SEPARATOR = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
       def render(report)
-        lines = ["gemxray scan results", "-----------------------------------------------------------------", ""]
+        lines = ["gemxray scan results", SEPARATOR, ""]
 
         if report.results.empty?
           lines << "No issues found."
@@ -12,7 +14,7 @@ module GemXray
           report.results.each do |result|
             lines << "[#{result.severity.to_s.upcase}] #{result.gem_name} (#{result.type_label})"
             result.reasons.each_with_index do |reason, index|
-              marker = index == result.reasons.length - 1 ? "`-" : "|-"
+              marker = index == result.reasons.length - 1 ? "└─" : "├─"
               lines << "  #{marker} #{reason.detail}"
             end
             lines << ""
@@ -20,8 +22,8 @@ module GemXray
         end
 
         summary = report.summary
-        lines << "-----------------------------------------------------------------"
-        lines << "Found: #{summary[:total]} (DANGER: #{summary[:danger]}, WARNING: #{summary[:warning]}, INFO: #{summary[:info]})"
+        lines << SEPARATOR
+        lines << "Detected: #{summary[:total]} (DANGER: #{summary[:danger]}, WARNING: #{summary[:warning]}, INFO: #{summary[:info]})"
         lines.join("\n")
       end
     end

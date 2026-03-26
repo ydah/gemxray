@@ -22,8 +22,8 @@ RSpec.describe GemXray::Formatters::Terminal do
     output = described_class.new.render(report)
 
     expect(output).to include("[DANGER] net-imap")
-    expect(output).to include("|- unused")
-    expect(output).to include("`- via mail")
-    expect(output).to include("Found: 1")
+    expect(output).to include("├─ unused")
+    expect(output).to include("└─ via mail")
+    expect(output).to include("Detected: 1")
   end
 end
