@@ -4,7 +4,7 @@ require "yaml"
 
 module GemXray
   class RailsKnowledge
-    Change = Struct.new(:gem_name, :since, :reason, keyword_init: true)
+    Change = Struct.new(:gem_name, :since, :reason, :source, keyword_init: true)
 
     def initialize(data_path: File.join(GemXray.root, "data", "rails_changes.yml"))
       @data_path = data_path
@@ -17,7 +17,12 @@ module GemXray
         next if Gem::Version.new(rails_version) < Gem::Version.new(since)
 
         Array(payload["removals"]).each do |item|
-          changes << Change.new(gem_name: item.fetch("gem"), since: since, reason: item.fetch("reason"))
+          changes << Change.new(
+            gem_name: item.fetch("gem"),
+            since: since,
+            reason: item.fetch("reason"),
+            source: item["source"]
+          )
         end
       end
     rescue ArgumentError

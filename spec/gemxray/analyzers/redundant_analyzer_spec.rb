@@ -20,6 +20,7 @@ RSpec.describe GemXray::Analyzers::RedundantAnalyzer do
       result = analyzer.analyze(gems).find { |entry| entry.gem_name == "mail" }
 
       expect(result.severity).to eq(:info)
+      expect(result.reasons.map(&:detail).any? { |detail| detail.include?("version is pinned in Gemfile") }).to be(true)
     end
   end
 

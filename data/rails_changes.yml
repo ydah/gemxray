@@ -2,20 +2,5 @@ versions:
   "6.0":
     removals:
       - gem: zeitwerk
-        reason: "Rails switched to Zeitwerk mode by default and already brings the gem through railties"
-  "7.0":
-    removals:
-      - gem: net-imap
-        reason: "modern Action Mailer and mail setups often no longer need an explicit entry"
-      - gem: net-pop
-        reason: "modern Action Mailer and mail setups often no longer need an explicit entry"
-      - gem: net-smtp
-        reason: "modern Action Mailer and mail setups often no longer need an explicit entry"
-  "7.1":
-    removals:
-      - gem: sprockets-rails
-        reason: "many apps now move to Propshaft or jsbundling-rails"
-  "7.2":
-    removals:
-      - gem: bootsnap
-        reason: "some environments are fine with Rails-side boot optimizations alone"
+        reason: "Rails 6 enables Zeitwerk mode by default, so an explicit gem entry is usually unnecessary"
+        source: "https://guides.rubyonrails.org/upgrading_ruby_on_rails.html"

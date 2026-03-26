@@ -20,12 +20,22 @@ module GemXray
           detail = "already installed as a dependency of #{path[:gems].first}"
           detail = "#{detail} (#{path[:gems].join(' -> ')})" if path[:gems].length > 2
 
-          build_result(
+          result = build_result(
             gem_entry: gem_entry,
             type: :redundant,
             severity: gem_entry.pinned_version? ? :info : :warning,
             detail: detail
           )
+
+          if gem_entry.pinned_version?
+            result.add_reason(
+              type: :redundant,
+              severity: :info,
+              detail: "version is pinned in Gemfile (#{gem_entry.version}), so this may be intentional"
+            )
+          end
+
+          result
         end
       end
 

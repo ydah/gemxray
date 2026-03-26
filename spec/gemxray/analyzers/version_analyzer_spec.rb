@@ -118,19 +118,19 @@ RSpec.describe GemXray::Analyzers::VersionAnalyzer do
           rails_knowledge: knowledge
         )
 
-        gems = [build_gem_entry(name: "net-imap")]
+        gems = [build_gem_entry(name: "zeitwerk")]
         results = analyzer.analyze(gems)
 
         rails_results = results.select { |r| r.reasons.any? { |reason| reason.detail.include?("Rails") } }
         expect(rails_results.length).to eq(1)
-        expect(rails_results.first.reasons.first.detail).to include("since Rails 7.0")
+        expect(rails_results.first.reasons.first.detail).to include("since Rails 6.0")
       end
     end
 
     it "does not report Rails changes for older Rails versions" do
       with_project("Gemfile" => 'source "https://rubygems.org"') do |dir|
         config = build_config(dir)
-        parser = stub_parser(rails_version: "6.1.0")
+        parser = stub_parser(rails_version: "5.2.8")
         stdgems = stub_stdgems
         knowledge = GemXray::RailsKnowledge.new
 
@@ -141,7 +141,7 @@ RSpec.describe GemXray::Analyzers::VersionAnalyzer do
           rails_knowledge: knowledge
         )
 
-        gems = [build_gem_entry(name: "net-imap")]
+        gems = [build_gem_entry(name: "zeitwerk")]
         results = analyzer.analyze(gems)
 
         expect(results).to be_empty
@@ -166,29 +166,6 @@ RSpec.describe GemXray::Analyzers::VersionAnalyzer do
         results = analyzer.analyze(gems)
 
         expect(results).to be_empty
-      end
-    end
-
-    it "can produce both default gem and Rails removal findings for the same gem" do
-      with_project("Gemfile" => 'source "https://rubygems.org"') do |dir|
-        config = build_config(dir)
-        parser = stub_parser(rails_version: "7.1.0")
-        stdgems = stub_stdgems(default_gems: %w[net-imap])
-        knowledge = GemXray::RailsKnowledge.new
-
-        analyzer = build_analyzer(
-          config: config,
-          gemfile_parser: parser,
-          stdgems_client: stdgems,
-          rails_knowledge: knowledge
-        )
-
-        gems = [build_gem_entry(name: "net-imap")]
-        results = analyzer.analyze(gems)
-
-        expect(results.length).to eq(2)
-        types = results.map { |r| r.reasons.first.type }
-        expect(types).to all(eq(:version_redundant))
       end
     end
 

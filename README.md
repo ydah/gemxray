@@ -58,7 +58,7 @@ bundle exec gemxray clean --auto-fix
 Generate a cleanup branch and open a GitHub PR with `gh`:
 
 ```bash
-bundle exec gemxray pr --bundle
+bundle exec gemxray pr
 ```
 
 If `gh` is unavailable, the PR command can fall back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
@@ -95,6 +95,7 @@ github:
     - cleanup
   reviewers: []
   per_gem: false
+  bundle_install: true
 ```
 
 ## Command Summary
@@ -118,8 +119,10 @@ github:
 
 - `clean` writes `Gemfile.bak` before mutating the file.
 - `clean` removes the full source range for multiline gem declarations.
-- `clean --bundle` and `pr --bundle` run `bundle install` after editing.
+- `clean --bundle` runs `bundle install` after editing.
+- `pr` runs `bundle install` before committing by default. Use `pr --no-bundle` to skip it.
 - stdgems data uses a cached remote payload when available and falls back to bundled offline data.
+- Rails release-note checks use a conservative built-in dataset sourced from official guides.
 - `pr` requires a clean git worktree before it creates a branch and commits.
 
 ## Development

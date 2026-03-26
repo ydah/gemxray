@@ -4,6 +4,7 @@ require "optparse"
 
 module GemXray
   class CLI
+    HelpRequested = Class.new(StandardError)
     COMMANDS = %w[scan clean pr init version help].freeze
 
     def self.start(argv = ARGV, out: $stdout, err: $stderr, stdin: $stdin)
@@ -32,6 +33,8 @@ module GemXray
         out.puts(help_text)
         0
       end
+    rescue HelpRequested
+      0
     rescue OptionParser::ParseError => e
       err.puts(e.message)
       err.puts(help_text)
@@ -46,7 +49,9 @@ module GemXray
     attr_reader :out, :err, :stdin
 
     def extract_command
-      return "scan" if @argv.empty? || @argv.first.start_with?("-")
+      return "scan" if @argv.empty?
+      return "help" if %w[-h --help].include?(@argv.first)
+      return "scan" if @argv.first.start_with?("-")
 
       return @argv.shift if COMMANDS.include?(@argv.first)
 
@@ -92,7 +97,7 @@ module GemXray
       result = Editors::GithubPr.new(config).create(
         report.results,
         per_gem: options.fetch(:per_gem, config.github_per_gem?),
-        bundle_install: config.github_bundle_install?,
+        bundle_install: options.fetch(:bundle_install, config.github_bundle_install?),
         comment: config.comment?
       )
 
@@ -115,6 +120,10 @@ module GemXray
       OptionParser.new do |parser|
         parser.banner = "Usage: gemxray init [--force]"
         parser.on("--force", "overwrite an existing config file") { options[:force] = true }
+        parser.on("-h", "--help", "show help") do
+          out.puts(parser)
+          raise HelpRequested
+        end
       end.parse!(argv)
 
       path = File.expand_path(Config::DEFAULT_CONFIG_PATH)
@@ -147,7 +156,7 @@ module GemXray
         parser.on("--auto-fix", "remove only danger level gems without prompting") { options[:auto_fix] = true }
         parser.on("--dry-run", "show targets without writing Gemfile") { options[:dry_run] = true }
         parser.on("--comment", "leave a comment in place of the removed gem line") { options[:comment] = true }
-        parser.on("--bundle", "run bundle install after editing") { options[:bundle_install] = true }
+        parser.on("--[no-]bundle", "run bundle install after editing") { |value| options[:bundle_install] = value }
       end.parse!(argv)
 
       options
@@ -159,7 +168,9 @@ module GemXray
       OptionParser.new do |parser|
         parser.banner = "Usage: gemxray pr [options]"
         common_options(parser, options)
-        parser.on("--bundle", "run bundle install before committing (default)") { options[:bundle_install] = true }
+        parser.on("--[no-]bundle", "run bundle install before committing (default: yes)") do |value|
+          options[:bundle_install] = value
+        end
         parser.on("--comment", "leave comments in Gemfile instead of deleting lines") { options[:comment] = true }
         parser.on("--per-gem", "create one PR per gem") { options[:per_gem] = true }
       end.parse!(argv)
@@ -180,7 +191,7 @@ module GemXray
       parser.on("--config PATH", "path to .gemxray.yml") { |value| options[:config_path] = value }
       parser.on("-h", "--help", "show help") do
         out.puts(parser)
-        raise OptionParser::ParseError, ""
+        raise HelpRequested
       end
     end
 

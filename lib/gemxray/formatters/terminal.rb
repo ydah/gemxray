@@ -3,10 +3,11 @@
 module GemXray
   module Formatters
     class Terminal
+      HEADER = "🧹 gemxray scan results"
       SEPARATOR = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
       def render(report)
-        lines = ["gemxray scan results", SEPARATOR, ""]
+        lines = [HEADER, SEPARATOR, ""]
 
         if report.results.empty?
           lines << "No issues found."
@@ -23,7 +24,7 @@ module GemXray
 
         summary = report.summary
         lines << SEPARATOR
-        lines << "Detected: #{summary[:total]} (DANGER: #{summary[:danger]}, WARNING: #{summary[:warning]}, INFO: #{summary[:info]})"
+        lines << "検出: #{summary[:total]}件 (DANGER: #{summary[:danger]}, WARNING: #{summary[:warning]}, INFO: #{summary[:info]})"
         lines.join("\n")
       end
     end
