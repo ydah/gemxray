@@ -1,4 +1,8 @@
 versions:
+  "6.0":
+    removals:
+      - gem: zeitwerk
+        reason: "Rails switched to Zeitwerk mode by default and already brings the gem through railties"
   "7.0":
     removals:
       - gem: net-imap

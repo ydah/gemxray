@@ -45,14 +45,14 @@ module GemXray
         gem_entry.require_names.uniq
       end
 
-      def constant_candidates(gem_name)
-        gem_metadata_resolver.constant_candidates_for(gem_name)
+      def constant_candidates(gem_entry)
+        gem_metadata_resolver.constant_candidates_for(gem_entry.name, version_requirement: gem_entry.version)
       end
 
       def autoloaded_gem?(gem_entry)
         return true if AUTOLOADED_GEMS.include?(gem_entry.name)
 
-        gem_metadata_resolver.railtie?(gem_entry.name)
+        gem_metadata_resolver.railtie?(gem_entry.name, version_requirement: gem_entry.version)
       end
     end
   end

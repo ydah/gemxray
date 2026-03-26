@@ -8,6 +8,7 @@ RSpec.describe GemXray::RailsKnowledge do
       changes = knowledge.changes_for("7.1.3")
 
       gem_names = changes.map(&:gem_name)
+      expect(gem_names).to include("zeitwerk")
       expect(gem_names).to include("net-imap", "net-pop", "net-smtp")
       expect(gem_names).to include("sprockets-rails")
     end
@@ -39,6 +40,13 @@ RSpec.describe GemXray::RailsKnowledge do
       expect(change.since).to eq("7.0")
       expect(change.reason).to be_a(String)
       expect(change.reason).not_to be_empty
+    end
+
+    it "includes Rails 6.0 removals for later versions" do
+      change = knowledge.find_removal("zeitwerk", "7.1.0")
+
+      expect(change).not_to be_nil
+      expect(change.since).to eq("6.0")
     end
   end
 

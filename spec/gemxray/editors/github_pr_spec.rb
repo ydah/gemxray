@@ -1,6 +1,60 @@
 # frozen_string_literal: true
 
 RSpec.describe GemXray::Editors::GithubPr do
+  it "runs bundle install by default for PR creation and commits the lockfile" do
+    with_project(sample_project_files) do |project_dir|
+      config = build_config(project_dir)
+      pr = described_class.new(config)
+      results = [
+        GemXray::Result.new(
+          gem_name: "net-imap",
+          gemfile_line: 5,
+          gemfile_end_line: 5,
+          reasons: [GemXray::Result::Reason.new(type: :unused, detail: "unused", severity: :danger)],
+          severity: :danger
+        )
+      ]
+
+      allow(Time).to receive(:now).and_return(Time.new(2026, 3, 27, 12, 0, 0))
+      allow(pr).to receive(:run!) do |*args|
+        case args
+        when ["git", "rev-parse", "--git-dir"], ["git", "status", "--short"], ["git", "switch", "main"],
+          ["git", "switch", "-c", "gemxray/cleanup-20260327"], ["git", "push", "-u", "origin", "gemxray/cleanup-20260327"]
+          ""
+        when ["git", "status", "--short", "Gemfile.lock"]
+          " M Gemfile.lock\n"
+        when ["git", "add", "Gemfile"], ["git", "add", "Gemfile.lock"]
+          ""
+        when ["git", "commit", "-m", "chore: remove net-imap from Gemfile"],
+          ["git", "commit", "-m", "chore: refresh Gemfile.lock after gem sweep"]
+          ""
+        when Array
+          if args[0, 3] == ["gh", "pr", "create"]
+            "https://example.test/pr/1\n"
+          else
+            raise "unexpected command: #{args.inspect}"
+          end
+        end
+      end
+
+      editor = instance_double(
+        GemXray::Editors::GemfileEditor,
+        apply: GemXray::Editors::GemfileEditor::EditResult.new(
+          removed: ["net-imap"],
+          skipped: [],
+          dry_run: false,
+          backup_path: nil
+        ),
+        bundle_install!: "bundle install output"
+      )
+      allow(GemXray::Editors::GemfileEditor).to receive(:new).and_return(editor)
+
+      pr.create(results)
+
+      expect(editor).to have_received(:bundle_install!)
+    end
+  end
+
   it "pushes the branch before falling back to the GitHub API" do
     with_project(sample_project_files) do |project_dir|
       config = build_config(project_dir)
@@ -57,7 +111,7 @@ RSpec.describe GemXray::Editors::GithubPr do
       )
       allow(GemXray::Editors::GemfileEditor).to receive(:new).and_return(editor)
 
-      outcome = pr.create(results)
+      outcome = pr.create(results, bundle_install: false)
 
       expect(outcome[:branch]).to eq("gemxray/cleanup-20260326")
       expect(outcome[:pr_url]).to eq("https://example.test/pr/1")
@@ -120,7 +174,7 @@ RSpec.describe GemXray::Editors::GithubPr do
         end
       end
 
-      outcome = pr.create(results, per_gem: true)
+      outcome = pr.create(results, per_gem: true, bundle_install: false)
 
       expect(outcome[:pull_requests].map { |item| item[:gem_name] }).to eq(%w[net-imap awesome_print])
       expect(outcome[:pull_requests].map { |item| item[:branch] }).to eq(
@@ -185,7 +239,7 @@ RSpec.describe GemXray::Editors::GithubPr do
       )
       allow(GemXray::Editors::GemfileEditor).to receive(:new).and_return(editor)
 
-      outcome = pr.create(results)
+      outcome = pr.create(results, bundle_install: false)
 
       expect(outcome[:pr_url]).to eq("https://example.test/pr/1")
       expect(outcome[:pull_requests].length).to eq(1)

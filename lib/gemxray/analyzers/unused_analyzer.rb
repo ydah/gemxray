@@ -36,7 +36,7 @@ module GemXray
 
       def gem_used?(gem_entry)
         code_snapshot.require_used?(require_candidates(gem_entry)) ||
-          code_snapshot.constant_used?(constant_candidates(gem_entry.name)) ||
+          code_snapshot.constant_used?(constant_candidates(gem_entry)) ||
           code_snapshot.dependency_used?(gem_entry.name) ||
           autoloaded_gem?(gem_entry)
       end

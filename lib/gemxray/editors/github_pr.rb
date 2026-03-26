@@ -12,7 +12,7 @@ module GemXray
         @config = config
       end
 
-      def create(results, per_gem: config.github_per_gem?, bundle_install: config.bundle_install?, comment: false)
+      def create(results, per_gem: config.github_per_gem?, bundle_install: config.github_bundle_install?, comment: false)
         ensure_git_repository!
         ensure_clean_worktree!
 

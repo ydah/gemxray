@@ -92,7 +92,7 @@ module GemXray
       result = Editors::GithubPr.new(config).create(
         report.results,
         per_gem: options.fetch(:per_gem, config.github_per_gem?),
-        bundle_install: config.bundle_install?,
+        bundle_install: config.github_bundle_install?,
         comment: config.comment?
       )
 
@@ -159,7 +159,7 @@ module GemXray
       OptionParser.new do |parser|
         parser.banner = "Usage: gemxray pr [options]"
         common_options(parser, options)
-        parser.on("--bundle", "run bundle install before committing") { options[:bundle_install] = true }
+        parser.on("--bundle", "run bundle install before committing (default)") { options[:bundle_install] = true }
         parser.on("--comment", "leave comments in Gemfile instead of deleting lines") { options[:comment] = true }
         parser.on("--per-gem", "create one PR per gem") { options[:per_gem] = true }
       end.parse!(argv)

@@ -191,6 +191,7 @@ RSpec.describe GemXray::Config do
       expect(config.github_labels).to eq(%w[dependencies cleanup])
       expect(config.github_reviewers).to eq([])
       expect(config.github_per_gem?).to be false
+      expect(config.github_bundle_install?).to be true
     end
   end
 

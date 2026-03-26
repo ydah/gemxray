@@ -24,7 +24,8 @@ module GemXray
         base_branch: "main",
         labels: %w[dependencies cleanup],
         reviewers: [],
-        per_gem: false
+        per_gem: false,
+        bundle_install: true
       }
     }.freeze
     SEVERITY_ORDER = { danger: 0, warning: 1, info: 2 }.freeze
@@ -50,6 +51,7 @@ module GemXray
           - cleanup
         reviewers: []
         per_gem: false
+        bundle_install: true
     YAML
 
     attr_reader :config_path, :gemfile_path, :format, :only, :severity_threshold, :whitelist,
@@ -180,6 +182,10 @@ module GemXray
 
     def github_per_gem?
       truthy?(github.fetch(:per_gem, false))
+    end
+
+    def github_bundle_install?
+      truthy?(github.fetch(:bundle_install, true))
     end
 
     private
