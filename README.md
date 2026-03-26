@@ -1,12 +1,14 @@
 # GemXray
 
-`gemxray` is a CLI for finding gems that can likely be removed from a project `Gemfile`.
+`gemxray` is a CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`.
 
-It combines three signals:
+It combines three analyzers:
 
-1. Unused gems: no `require`, constant reference, gemspec dependency, or Rails auto-load signal was found.
-2. Redundant gems: another top-level gem already pulls the gem in through `Gemfile.lock`.
-3. Version-redundant gems: the gem is now covered by Ruby default gems or known Rails version changes.
+1. `unused`: no `require`, constant reference, gemspec dependency, or Rails autoload signal was found.
+2. `redundant`: another top-level gem already brings the gem in through `Gemfile.lock`.
+3. `version-redundant`: the gem is already covered by your Ruby or Rails version.
+
+If you run `gemxray` without a command, it defaults to `scan`.
 
 ## Installation
 
@@ -22,46 +24,9 @@ Or install it directly:
 gem install gemxray
 ```
 
-## Usage
+If you install the gem globally, replace `bundle exec gemxray` with `gemxray` in the examples below.
 
-Run a scan in the current project:
-
-```bash
-bundle exec gemxray scan
-```
-
-Use JSON or YAML output for CI or scripting:
-
-```bash
-bundle exec gemxray scan --format json
-bundle exec gemxray scan --format yaml --ci
-```
-
-Limit the analyzers:
-
-```bash
-bundle exec gemxray scan --only unused,version
-```
-
-Interactively remove candidates from `Gemfile`:
-
-```bash
-bundle exec gemxray clean
-```
-
-Apply only high-confidence removals without prompting:
-
-```bash
-bundle exec gemxray clean --auto-fix
-```
-
-Generate a cleanup branch and open a GitHub PR with `gh`:
-
-```bash
-bundle exec gemxray pr
-```
-
-If `gh` is unavailable, the PR command can fall back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
+## Quick Start
 
 Generate a starter config:
 
@@ -69,9 +34,59 @@ Generate a starter config:
 bundle exec gemxray init
 ```
 
-## Config
+Scan the current project:
 
-`gemxray` looks for `.gemxray.yml` in the working directory.
+```bash
+bundle exec gemxray scan
+```
+
+Use structured output for CI or scripts:
+
+```bash
+bundle exec gemxray scan --format json --ci
+bundle exec gemxray scan --only unused,version --severity warning
+```
+
+Preview or apply Gemfile cleanup:
+
+```bash
+bundle exec gemxray clean --dry-run
+bundle exec gemxray clean
+bundle exec gemxray clean --auto-fix
+```
+
+Create a cleanup branch and open a pull request:
+
+```bash
+bundle exec gemxray pr
+bundle exec gemxray pr --per-gem --no-bundle
+```
+
+Target a different project by passing a Gemfile path:
+
+```bash
+bundle exec gemxray scan --gemfile path/to/Gemfile
+```
+
+## Commands
+
+| Command | Purpose | Useful options |
+| --- | --- | --- |
+| `scan` | Analyze the Gemfile and print findings. | `--format`, `--only`, `--severity`, `--ci`, `--gemfile`, `--config` |
+| `clean` | Remove selected gems from `Gemfile`. | `--dry-run`, `--auto-fix`, `--comment`, `--[no-]bundle` |
+| `pr` | Create a branch, commit the cleanup, and open a GitHub PR. | `--per-gem`, `--[no-]bundle`, `--comment` |
+| `init` | Write a starter `.gemxray.yml`. | `--force` |
+| `version` | Print the installed gemxray version. | none |
+
+## Severity
+
+- `danger`: high-confidence removal candidate. `clean --auto-fix` only removes `danger` findings.
+- `warning`: likely removable, but worth a quick review.
+- `info`: informative hint, often tied to pinned versions or lower-confidence redundancy.
+
+## Configuration
+
+`gemxray` reads `.gemxray.yml` from the working directory unless you pass `--config PATH`.
 
 ```yaml
 version: 1
@@ -83,6 +98,8 @@ whitelist:
 scan_dirs:
   - engines/billing/app
   - engines/billing/lib
+
+redundant_depth: 2
 
 overrides:
   puma:
@@ -98,36 +115,29 @@ github:
   bundle_install: true
 ```
 
-## Command Summary
+Config fields:
 
-`scan`
-: Analyze the Gemfile and print a report.
-
-`clean`
-: Remove selected gems from `Gemfile`. `--auto-fix` only removes `danger` findings.
-
-`pr`
-: Create a branch, commit Gemfile cleanup, and open a PR with GitHub CLI.
-
-`init`
-: Write `.gemxray.yml`.
-
-`version`
-: Print the gem version.
+- `whitelist`: gems to skip entirely.
+- `scan_dirs`: extra directories to scan in addition to the defaults: `app`, `lib`, `config`, `db`, `script`, `bin`, `exe`, `spec`, `test`, and `tasks`.
+- `redundant_depth`: maximum dependency depth for redundant gem detection.
+- `overrides.<gem>.severity`: override a finding severity with `ignore`, `info`, `warning`, or `danger`.
+- `github.*`: defaults used by `pr`.
 
 ## Notes
 
-- `clean` writes `Gemfile.bak` before mutating the file.
+- `clean` writes `Gemfile.bak` before editing the file.
 - `clean` removes the full source range for multiline gem declarations.
 - `clean --bundle` runs `bundle install` after editing.
 - `pr` runs `bundle install` before committing by default. Use `pr --no-bundle` to skip it.
-- stdgems data uses a cached remote payload when available and falls back to bundled offline data.
-- Rails release-note checks use a conservative built-in dataset sourced from official guides.
-- `pr` requires a clean git worktree before it creates a branch and commits.
+- `pr` requires a clean git worktree before it creates branches or commits.
+- `pr` switches to `github.base_branch` before creating the cleanup branch.
+- If `gh` is unavailable, `pr` falls back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
+- Ruby default and bundled gem checks use cached stdgems data when available and bundled offline data otherwise.
+- Rails version hints come from the bundled `data/rails_changes.yml` dataset.
 
 ## Development
 
-Setup and test:
+Install dependencies and run the test suite:
 
 ```bash
 bundle install
