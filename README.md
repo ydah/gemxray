@@ -43,7 +43,7 @@ bundle exec gemxray scan
 Use structured output for CI or scripts:
 
 ```bash
-bundle exec gemxray scan --format json --ci
+bundle exec gemxray scan --format json --ci --fail-on danger
 bundle exec gemxray scan --only unused,version --severity warning
 ```
 
@@ -72,7 +72,7 @@ bundle exec gemxray scan --gemfile path/to/Gemfile
 
 | Command | Purpose | Useful options |
 | --- | --- | --- |
-| `scan` | Analyze the Gemfile and print findings. | `--format`, `--only`, `--severity`, `--ci`, `--gemfile`, `--config` |
+| `scan` | Analyze the Gemfile and print findings. | `--format`, `--only`, `--severity`, `--ci`, `--fail-on`, `--gemfile`, `--config` |
 | `clean` | Remove selected gems from `Gemfile`. | `--dry-run`, `--auto-fix`, `--comment`, `--[no-]bundle` |
 | `pr` | Create a branch, commit the cleanup, and open a GitHub PR. | `--per-gem`, `--[no-]bundle`, `--comment` |
 | `init` | Write a starter `.gemxray.yml`. | `--force` |
@@ -90,6 +90,9 @@ bundle exec gemxray scan --gemfile path/to/Gemfile
 
 ```yaml
 version: 1
+
+ci: false
+ci_fail_on: warning
 
 whitelist:
   - bootsnap
@@ -117,6 +120,8 @@ github:
 
 Config fields:
 
+- `ci`: enable non-zero exit status for `scan`.
+- `ci_fail_on`: minimum reported severity that makes `scan --ci` exit with status `1`. Defaults to `warning`.
 - `whitelist`: gems to skip entirely.
 - `scan_dirs`: extra directories to scan in addition to the defaults: `app`, `lib`, `config`, `db`, `script`, `bin`, `exe`, `spec`, `test`, and `tasks`.
 - `redundant_depth`: maximum dependency depth for redundant gem detection.

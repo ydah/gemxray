@@ -7,6 +7,7 @@ RSpec.describe GemXray::Config do
 
       expect(config.format).to eq("terminal")
       expect(config.severity_threshold).to eq(:info)
+      expect(config.ci_fail_threshold).to eq(:warning)
       expect(config.whitelist).to eq([])
       expect(config.redundant_depth).to eq(2)
       expect(config.auto_fix?).to be false
@@ -21,12 +22,14 @@ RSpec.describe GemXray::Config do
         gemfile_path: "/tmp/Gemfile",
         format: "json",
         severity: "warning",
+        ci_fail_on: "danger",
         auto_fix: true,
         dry_run: true
       )
 
       expect(config.format).to eq("json")
       expect(config.severity_threshold).to eq(:warning)
+      expect(config.ci_fail_threshold).to eq(:danger)
       expect(config.auto_fix?).to be true
       expect(config.dry_run?).to be true
     end
@@ -35,6 +38,8 @@ RSpec.describe GemXray::Config do
       with_project(
         "Gemfile" => 'source "https://rubygems.org"',
         ".gemxray.yml" => <<~YAML
+          ci: true
+          ci_fail_on: warning
           whitelist:
             - bootsnap
             - tzinfo-data
@@ -45,6 +50,8 @@ RSpec.describe GemXray::Config do
       ) do |dir|
         config = build_config(dir)
 
+        expect(config.ci?).to be true
+        expect(config.ci_fail_threshold).to eq(:warning)
         expect(config.whitelist).to include("bootsnap", "tzinfo-data")
         expect(config.ignore_gem?("puma")).to be true
       end
@@ -53,6 +60,12 @@ RSpec.describe GemXray::Config do
     it "raises on unknown severity" do
       expect {
         described_class.load(gemfile_path: "/tmp/Gemfile", severity: "critical")
+      }.to raise_error(GemXray::Error, /unknown severity/)
+    end
+
+    it "raises on unknown ci fail severity" do
+      expect {
+        described_class.load(gemfile_path: "/tmp/Gemfile", ci_fail_on: "critical")
       }.to raise_error(GemXray::Error, /unknown severity/)
     end
   end
@@ -151,6 +164,34 @@ RSpec.describe GemXray::Config do
       expect(config.severity_in_scope?(:danger)).to be true
       expect(config.severity_in_scope?(:warning)).to be true
       expect(config.severity_in_scope?(:info)).to be false
+    end
+  end
+
+  describe "#ci_failure?" do
+    it "returns true when a reported result reaches the configured fail threshold" do
+      config = described_class.load(gemfile_path: "/tmp/Gemfile", ci: true, ci_fail_on: "warning")
+      results = [
+        GemXray::Result.new(
+          gem_name: "puma",
+          severity: :warning,
+          reasons: [GemXray::Result::Reason.new(type: :unused, detail: "unused", severity: :warning)]
+        )
+      ]
+
+      expect(config.ci_failure?(results)).to be true
+    end
+
+    it "returns false when ci mode is disabled" do
+      config = described_class.load(gemfile_path: "/tmp/Gemfile", ci_fail_on: "danger")
+      results = [
+        GemXray::Result.new(
+          gem_name: "puma",
+          severity: :danger,
+          reasons: [GemXray::Result::Reason.new(type: :unused, detail: "unused", severity: :danger)]
+        )
+      ]
+
+      expect(config.ci_failure?(results)).to be false
     end
   end
 

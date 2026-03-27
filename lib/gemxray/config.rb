@@ -14,6 +14,7 @@ module GemXray
       auto_fix: false,
       dry_run: false,
       ci: false,
+      ci_fail_on: "warning",
       comment: false,
       bundle_install: false,
       whitelist: [],
@@ -31,6 +32,9 @@ module GemXray
     SEVERITY_ORDER = { danger: 0, warning: 1, info: 2 }.freeze
     TEMPLATE = <<~YAML.freeze
       version: 1
+
+      ci: false
+      ci_fail_on: warning
 
       whitelist:
         - bootsnap
@@ -55,7 +59,7 @@ module GemXray
     YAML
 
     attr_reader :config_path, :gemfile_path, :format, :only, :severity_threshold, :whitelist,
-                :scan_dirs, :overrides, :redundant_depth, :github
+                :scan_dirs, :overrides, :redundant_depth, :github, :ci_fail_threshold
 
     def self.load(options = {})
       raw_options = symbolize_keys(options)
@@ -103,6 +107,7 @@ module GemXray
       @format = options.fetch(:format).to_s
       @only = normalize_only(options[:only])
       @severity_threshold = normalize_severity(options.fetch(:severity))
+      @ci_fail_threshold = normalize_severity(options.fetch(:ci_fail_on))
       @whitelist = Array(options[:whitelist]).map(&:to_s).uniq
       @scan_dirs = (DEFAULT_SCAN_DIRS + Array(options[:scan_dirs]).map(&:to_s)).uniq
       @overrides = options.fetch(:overrides, {})
@@ -135,6 +140,12 @@ module GemXray
       @ci
     end
 
+    def ci_failure?(results)
+      return false unless ci?
+
+      Array(results).any? { |result| severity_matches_threshold?(result.severity, ci_fail_threshold) }
+    end
+
     def comment?
       @comment
     end
@@ -165,7 +176,7 @@ module GemXray
     end
 
     def severity_in_scope?(severity)
-      SEVERITY_ORDER.fetch(severity) <= SEVERITY_ORDER.fetch(severity_threshold)
+      severity_matches_threshold?(severity, severity_threshold)
     end
 
     def github_base_branch
@@ -210,6 +221,10 @@ module GemXray
 
     def truthy?(value)
       value == true || value.to_s == "true"
+    end
+
+    def severity_matches_threshold?(severity, threshold)
+      SEVERITY_ORDER.fetch(severity) <= SEVERITY_ORDER.fetch(threshold)
     end
   end
 end

@@ -62,7 +62,7 @@ module GemXray
       config = Config.load(parse_scan_options(argv))
       report = Scanner.new(config).run
       out.puts(formatter_for(config.format).render(report))
-      config.ci? && report.results.any? ? 1 : 0
+      config.ci_failure?(report.results) ? 1 : 0
     end
 
     def run_clean(argv)
@@ -187,7 +187,10 @@ module GemXray
       parser.on("--severity LEVEL", %w[info warning danger], "minimum severity to report") do |value|
         options[:severity] = value
       end
-      parser.on("--ci", "exit with status 1 when issues are found") { options[:ci] = true }
+      parser.on("--fail-on LEVEL", %w[info warning danger], "minimum reported severity that makes --ci exit 1") do |value|
+        options[:ci_fail_on] = value
+      end
+      parser.on("--ci", "exit with status 1 when findings at or above fail-on level are found") { options[:ci] = true }
       parser.on("--config PATH", "path to .gemxray.yml") { |value| options[:config_path] = value }
       parser.on("-h", "--help", "show help") do
         out.puts(parser)

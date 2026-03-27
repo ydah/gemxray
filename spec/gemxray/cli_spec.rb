@@ -3,6 +3,24 @@
 require "stringio"
 
 RSpec.describe GemXray::CLI do
+  def build_report(results)
+    GemXray::Report.new(
+      version: GemXray::VERSION,
+      ruby_version: "3.2.2",
+      rails_version: "7.1.3",
+      scanned_at: "2026-01-01T00:00:00+00:00",
+      results: results
+    )
+  end
+
+  def build_result(gem_name:, severity:)
+    GemXray::Result.new(
+      gem_name: gem_name,
+      reasons: [GemXray::Result::Reason.new(type: :unused, detail: "unused", severity: severity)],
+      severity: severity
+    )
+  end
+
   it "returns 1 for scan --ci when findings are present" do
     with_project(sample_project_files) do |project_dir|
       code = described_class.start(
@@ -13,6 +31,50 @@ RSpec.describe GemXray::CLI do
       )
 
       expect(code).to eq(1)
+    end
+  end
+
+  it "uses ci settings from config to decide scan exit status" do
+    with_project(
+      sample_project_files.merge(
+        ".gemxray.yml" => <<~YAML
+          ci: true
+          ci_fail_on: danger
+        YAML
+      )
+    ) do |project_dir|
+      code = described_class.start(
+        [
+          "scan",
+          "--gemfile", File.join(project_dir, "Gemfile"),
+          "--config", File.join(project_dir, ".gemxray.yml")
+        ],
+        out: StringIO.new,
+        err: StringIO.new,
+        stdin: StringIO.new
+      )
+
+      expect(code).to eq(1)
+    end
+  end
+
+  it "returns 0 for scan --ci --fail-on danger when only warning findings are reported" do
+    with_project(sample_project_files) do |project_dir|
+      scanner = instance_double(
+        GemXray::Scanner,
+        run: build_report([build_result(gem_name: "awesome_print", severity: :warning)])
+      )
+
+      allow(GemXray::Scanner).to receive(:new).and_return(scanner)
+
+      code = described_class.start(
+        ["scan", "--ci", "--fail-on", "danger", "--gemfile", File.join(project_dir, "Gemfile")],
+        out: StringIO.new,
+        err: StringIO.new,
+        stdin: StringIO.new
+      )
+
+      expect(code).to eq(0)
     end
   end
 
