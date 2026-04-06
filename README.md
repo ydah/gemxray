@@ -1,14 +1,36 @@
 # GemXray
 
-`gemxray` is a CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`.
+[![Gem Version](https://badge.fury.io/rb/gemxray.svg)](https://badge.fury.io/rb/gemxray)
+[![CI](https://github.com/ydah/gemxray/actions/workflows/main.yml/badge.svg)](https://github.com/ydah/gemxray/actions/workflows/main.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-It combines three analyzers:
+A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`.
 
-1. `unused`: no `require`, constant reference, gemspec dependency, or Rails autoload signal was found.
-2. `redundant`: another top-level gem already brings the gem in through `Gemfile.lock`.
-3. `version-redundant`: the gem is already covered by your Ruby or Rails version.
+GemXray combines three analyzers to find removal candidates:
 
-If you run `gemxray` without a command, it defaults to `scan`.
+| Analyzer | What it detects |
+| --- | --- |
+| `unused` | No `require`, constant reference, gemspec dependency, or Rails autoload signal was found. |
+| `redundant` | Another top-level gem already brings the gem in through `Gemfile.lock`. |
+| `version` | The gem is already covered by your Ruby or Rails version (default/bundled gem). |
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Commands](#commands)
+  - [Shared analysis options](#shared-analysis-options)
+  - [`scan`](#scan)
+  - [`clean`](#clean)
+  - [`pr`](#pr)
+  - [`init`](#init)
+  - [`version`](#version)
+  - [`help`](#help)
+- [Severity](#severity)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Installation
 
@@ -113,8 +135,6 @@ Behavior:
 - Without `--ci`, a successful scan exits with status `0` even if findings exist.
 - With `--ci`, the exit status becomes `1` when any reported finding reaches `--fail-on` or `ci_fail_on`.
 
-Typical examples:
-
 ```bash
 bundle exec gemxray scan
 bundle exec gemxray scan --format json --ci --fail-on danger
@@ -130,21 +150,15 @@ Behavior:
 - Without `--auto-fix`, it prompts once per reported result: `Remove <gem> (<severity>)? [y/N]:`.
 - Only `y` and `yes` remove the gem. Any other answer skips it.
 - It edits the full detected source range, so multiline gem declarations are removed as a unit.
-- In a real edit, it writes a backup file at `Gemfile.bak` before saving changes.
+- It writes a backup file at `Gemfile.bak` before saving changes.
 - If nothing is selected, it prints `No removable gems were selected.` and exits with status `0`.
 
 Command-specific options:
 
-- `--auto-fix`
-  Skips prompts and removes every reported `danger` finding automatically. `warning` and `info` findings are never auto-removed.
-- `--dry-run`
-  Does not write the Gemfile. Instead, it prints the selected candidates and a preview hunk showing the lines that would be removed or replaced.
-- `--comment`
-  Replaces each removed gem entry with a comment such as `# Removed by gemxray: ...` instead of deleting the lines outright.
-- `--bundle`, `--no-bundle`
-  After a real edit, `--bundle` runs `bundle install` in the target project. It is skipped automatically during `--dry-run` and when no gems were actually removed.
-
-Typical examples:
+- `--auto-fix` -- Skips prompts and removes every reported `danger` finding automatically. `warning` and `info` findings are never auto-removed.
+- `--dry-run` -- Does not write the Gemfile. Instead, it prints the selected candidates and a preview hunk showing the lines that would be removed or replaced.
+- `--comment` -- Replaces each removed gem entry with a comment such as `# Removed by gemxray: ...` instead of deleting the lines outright.
+- `--bundle`, `--no-bundle` -- After a real edit, `--bundle` runs `bundle install` in the target project. It is skipped automatically during `--dry-run` and when no gems were actually removed.
 
 ```bash
 bundle exec gemxray clean
@@ -161,19 +175,14 @@ Behavior:
 - It fails if the report is empty after filters are applied.
 - It requires the target project to be inside a git repository with a clean worktree before it starts.
 - It switches to `github.base_branch`, creates a cleanup branch, edits the Gemfile, commits the change, optionally refreshes `Gemfile.lock`, pushes the branch, and opens a PR.
-- It tries `gh pr create` first. If that is unavailable, it falls back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
+- It tries `gh pr create` first. If `gh` is unavailable, it falls back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
 - The PR body includes removed gems, detection reasons, and a short checklist.
 
 Command-specific options:
 
-- `--per-gem`
-  Creates one branch and one pull request per reported gem instead of grouping everything into a single cleanup PR.
-- `--comment`
-  Leaves comments in the Gemfile instead of deleting lines, using the same replacement behavior as `clean --comment`.
-- `--bundle`, `--no-bundle`
-  Controls whether `pr` runs `bundle install` before committing. The default is `--bundle`, which comes from `github.bundle_install: true`.
-
-Typical examples:
+- `--per-gem` -- Creates one branch and one pull request per reported gem instead of grouping everything into a single cleanup PR.
+- `--comment` -- Leaves comments in the Gemfile instead of deleting lines, using the same replacement behavior as `clean --comment`.
+- `--bundle`, `--no-bundle` -- Controls whether `pr` runs `bundle install` before committing. The default is `--bundle` (from `github.bundle_install: true`).
 
 ```bash
 bundle exec gemxray pr
@@ -185,27 +194,17 @@ bundle exec gemxray pr --only unused --severity danger
 
 `init` writes a starter `.gemxray.yml` into the current working directory.
 
-Behavior:
-
 - It does not read `--config`; it always writes `.gemxray.yml` in the directory where you run the command.
 - If the file already exists, the command fails unless you pass `--force`.
 
-Command-specific options:
-
-- `--force`
-  Overwrites an existing `.gemxray.yml`.
-
-Typical example:
-
 ```bash
+bundle exec gemxray init
 bundle exec gemxray init --force
 ```
 
 ### `version`
 
-`version` prints the installed gemxray version and exits with status `0`.
-
-Typical example:
+Prints the installed gemxray version and exits with status `0`.
 
 ```bash
 bundle exec gemxray version
@@ -213,9 +212,7 @@ bundle exec gemxray version
 
 ### `help`
 
-`help` prints the top-level command summary and exits with status `0`.
-
-Typical examples:
+Prints the top-level command summary and exits with status `0`.
 
 ```bash
 bundle exec gemxray help
@@ -225,9 +222,11 @@ bundle exec gemxray scan --help
 
 ## Severity
 
-- `danger`: high-confidence removal candidate. `clean --auto-fix` only removes `danger` findings.
-- `warning`: likely removable, but worth a quick review.
-- `info`: informative hint, often tied to pinned versions or lower-confidence redundancy.
+| Level | Meaning | Auto-fix target |
+| --- | --- | --- |
+| `danger` | High-confidence removal candidate. | Yes (`clean --auto-fix` removes these) |
+| `warning` | Likely removable, but worth a quick review. | No |
+| `info` | Informative hint (pinned versions, lower-confidence redundancy). | No |
 
 ## Configuration
 
@@ -235,11 +234,11 @@ bundle exec gemxray scan --help
 
 The effective config is built in this order:
 
-1. built-in defaults
+1. Built-in defaults
 2. `.gemxray.yml`
 3. CLI options for the current run
 
-Later scalar values override earlier ones. Array values are merged and deduplicated, so list-like fields such as `scan_dirs`, `whitelist`, `github.labels`, and `github.reviewers` are additive.
+Later scalar values override earlier ones. Array values (`scan_dirs`, `whitelist`, `github.labels`, `github.reviewers`) are merged and deduplicated.
 
 ```yaml
 version: 1
@@ -273,91 +272,42 @@ github:
 
 ### Top-level fields
 
-- `version`
-  Template default: `1`.
-  This is currently a schema marker for humans and future compatibility. The current implementation accepts it but does not change behavior based on the value yet.
-- `gemfile_path`
-  Default: `Gemfile`.
-  Path to the target Gemfile. This is usually passed via `--gemfile PATH`, but it can also live in the YAML file. The path is expanded from the current working directory, not from the directory that contains `.gemxray.yml`.
-- `format`
-  Default: `terminal`.
-  Output format used by `scan`. Accepted values are `terminal`, `json`, and `yaml`.
-- `only`
-  Default: all analyzers.
-  Restricts analysis to a subset of analyzers. Accepted values are `unused`, `redundant`, and `version`. This affects `scan`, `clean`, and `pr`, because all three commands build the same report first.
-- `severity`
-  Default: `info`.
-  Minimum severity that remains in the report. `warning` keeps `danger` and `warning`. `danger` keeps only `danger`. This filtering happens before follow-up actions, so it also limits what `clean`, `pr`, and `scan --ci` can act on.
-- `ci`
-  Default: `false`.
-  Enables CI-style exit codes for `scan`. When it is `true`, `scan` exits with status `1` if any reported result meets `ci_fail_on`.
-- `ci_fail_on`
-  Default: `warning`.
-  Minimum reported severity that makes `scan --ci` fail. Accepted values are `info`, `warning`, and `danger`. This is evaluated after `severity` filtering, so a finding hidden by `severity` cannot fail CI.
-- `auto_fix`
-  Default: `false`.
-  Used by `clean`. When `true`, `clean` removes every reported `danger` finding without prompting. It never auto-removes `warning` or `info` findings.
-- `dry_run`
-  Default: `false`.
-  Used by `clean`. Generates a preview of the Gemfile changes without writing the file.
-- `comment`
-  Default: `false`.
-  Used by `clean` and `pr`. When `true`, gem entries are replaced with comments instead of being deleted outright.
-- `bundle_install`
-  Default: `false`.
-  Used by `clean`. Runs `bundle install` after a real Gemfile edit. This top-level field does not control `pr`; pull request creation uses `github.bundle_install`.
-- `whitelist`
-  Default: `[]`.
-  List of gem names to skip completely. Whitelisted gems are ignored by the analyzers and never appear in the report.
-- `scan_dirs`
-  Default: `[]`.
-  Extra directories to scan for `require` calls, constant references, and gemspec dependencies. These are added to the built-in scan roots: `app`, `lib`, `config`, `db`, `script`, `bin`, `exe`, `spec`, `test`, and `tasks`. Missing directories are ignored.
-- `redundant_depth`
-  Default: `2`.
-  Maximum dependency depth used by the `redundant` analyzer when it looks for a parent gem in `Gemfile.lock`. Lower values make redundant detection more conservative.
-- `overrides`
-  Default: `{}`.
-  Per-gem overrides keyed by gem name. This is the place to suppress a gem entirely or force its final severity.
+| Field | Default | Description |
+| --- | --- | --- |
+| `version` | `1` | Schema marker for future compatibility. Currently accepted but does not change behavior. |
+| `gemfile_path` | `Gemfile` | Path to the target Gemfile. Expanded from the current working directory. |
+| `format` | `terminal` | Output format for `scan`. Accepted: `terminal`, `json`, `yaml`. |
+| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`. |
+| `severity` | `info` | Minimum severity kept in the report. Also limits what `clean`, `pr`, and `scan --ci` can act on. |
+| `ci` | `false` | Enables CI-style exit codes for `scan`. |
+| `ci_fail_on` | `warning` | Minimum severity that makes `scan --ci` exit with status `1`. |
+| `auto_fix` | `false` | When `true`, `clean` removes `danger` findings without prompting. |
+| `dry_run` | `false` | When `true`, `clean` previews changes without writing the Gemfile. |
+| `comment` | `false` | When `true`, gem entries are replaced with comments instead of being deleted. |
+| `bundle_install` | `false` | When `true`, `clean` runs `bundle install` after editing. Does not affect `pr`. |
+| `whitelist` | `[]` | Gem names to skip completely. |
+| `scan_dirs` | `[]` | Extra directories added to the built-in scan roots (`app`, `lib`, `config`, `db`, `script`, `bin`, `exe`, `spec`, `test`, `tasks`). |
+| `redundant_depth` | `2` | Maximum dependency depth for the `redundant` analyzer in `Gemfile.lock`. |
+| `overrides` | `{}` | Per-gem overrides keyed by gem name. |
 
 ### Override fields
 
-- `overrides.<gem>.severity`
-  Accepted values: `ignore`, `info`, `warning`, `danger`.
-  `ignore` skips the gem before analysis, so no finding is produced for it. `info`, `warning`, and `danger` keep the finding but force the final reported severity for that gem after analyzer results are merged.
+`overrides.<gem>.severity` accepts `ignore`, `info`, `warning`, or `danger`.
+
+- `ignore` skips the gem before analysis (no finding is produced).
+- `info`, `warning`, `danger` force the final reported severity after analyzers run.
 
 ### GitHub fields
 
-- `github.base_branch`
-  Default: `main`.
-  Base branch that `pr` checks out before it creates the cleanup branch.
-- `github.labels`
-  Default: `dependencies`, `cleanup`.
-  Labels applied to created pull requests. Because arrays are merged, custom labels are added to the defaults instead of replacing them.
-- `github.reviewers`
-  Default: `[]`.
-  Reviewers requested when `pr` opens a pull request.
-- `github.per_gem`
-  Default: `false`.
-  When `true`, `pr` creates one branch and one pull request per gem. When `false`, it groups all selected gems into a single cleanup branch and PR.
-- `github.bundle_install`
-  Default: `true`.
-  Controls whether `pr` runs `bundle install` before it commits changes.
-
-## Notes
-
-- `clean` writes `Gemfile.bak` before editing the file.
-- `clean` removes the full source range for multiline gem declarations.
-- `clean --bundle` runs `bundle install` after editing.
-- `pr` runs `bundle install` before committing by default. Use `pr --no-bundle` to skip it.
-- `pr` requires a clean git worktree before it creates branches or commits.
-- `pr` switches to `github.base_branch` before creating the cleanup branch.
-- If `gh` is unavailable, `pr` falls back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
-- Ruby default and bundled gem checks use cached stdgems data when available and bundled offline data otherwise.
-- Rails version hints come from the bundled `data/rails_changes.yml` dataset.
+| Field | Default | Description |
+| --- | --- | --- |
+| `github.base_branch` | `main` | Base branch that `pr` checks out before creating the cleanup branch. |
+| `github.labels` | `["dependencies", "cleanup"]` | Labels applied to created PRs. Custom labels are added to defaults (arrays are merged). |
+| `github.reviewers` | `[]` | Reviewers requested on created PRs. |
+| `github.per_gem` | `false` | When `true`, `pr` creates one branch and one PR per gem. |
+| `github.bundle_install` | `true` | Controls whether `pr` runs `bundle install` before committing. |
 
 ## Development
-
-Install dependencies and run the test suite:
 
 ```bash
 bundle install
@@ -369,3 +319,11 @@ Run the executable locally:
 ```bash
 ruby exe/gemxray scan --format terminal
 ```
+
+## Contributing
+
+Bug reports and pull requests are welcome on [GitHub](https://github.com/ydah/gemxray).
+
+## License
+
+The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
