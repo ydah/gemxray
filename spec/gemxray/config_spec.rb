@@ -236,6 +236,44 @@ RSpec.describe GemXray::Config do
     end
   end
 
+  describe "license config" do
+    it "has sensible defaults" do
+      config = described_class.load(gemfile_path: "/tmp/Gemfile")
+
+      expect(config.license_enabled?).to be false
+      expect(config.license_allowed).to eq([])
+      expect(config.license_deny_unknown?).to be false
+    end
+
+    it "can be enabled with allowed licenses" do
+      config = described_class.load(
+        gemfile_path: "/tmp/Gemfile",
+        license: { enabled: true, allowed: %w[MIT Apache-2.0], deny_unknown: true }
+      )
+
+      expect(config.license_enabled?).to be true
+      expect(config.license_allowed).to eq(%w[MIT Apache-2.0])
+      expect(config.license_deny_unknown?).to be true
+    end
+  end
+
+  describe "archive config" do
+    it "has sensible defaults" do
+      config = described_class.load(gemfile_path: "/tmp/Gemfile")
+
+      expect(config.archive_enabled?).to be false
+    end
+
+    it "reads github token from configured env var" do
+      config = described_class.load(
+        gemfile_path: "/tmp/Gemfile",
+        archive: { enabled: true, github_token_env: "MY_TOKEN" }
+      )
+
+      expect(config.archive_enabled?).to be true
+    end
+  end
+
   describe "boolean flags" do
     it "treats string 'true' as truthy" do
       config = described_class.load(gemfile_path: "/tmp/Gemfile", ci: "true")

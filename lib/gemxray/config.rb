@@ -27,6 +27,15 @@ module GemXray
         reviewers: [],
         per_gem: false,
         bundle_install: true
+      },
+      license: {
+        enabled: false,
+        allowed: [],
+        deny_unknown: false
+      },
+      archive: {
+        enabled: false,
+        github_token_env: "GITHUB_TOKEN"
       }
     }.freeze
     SEVERITY_ORDER = { danger: 0, warning: 1, info: 2 }.freeze
@@ -56,10 +65,26 @@ module GemXray
         reviewers: []
         per_gem: false
         bundle_install: true
+
+      license:
+        enabled: false
+        allowed:
+          - MIT
+          - Apache-2.0
+          - BSD-2-Clause
+          - BSD-3-Clause
+          - ISC
+          - Ruby
+        deny_unknown: false
+
+      archive:
+        enabled: false
+        github_token_env: GITHUB_TOKEN
     YAML
 
     attr_reader :config_path, :gemfile_path, :format, :only, :severity_threshold, :whitelist,
-                :scan_dirs, :overrides, :redundant_depth, :github, :ci_fail_threshold
+                :scan_dirs, :overrides, :redundant_depth, :github, :ci_fail_threshold,
+                :license, :archive
 
     def self.load(options = {})
       raw_options = symbolize_keys(options)
@@ -113,6 +138,8 @@ module GemXray
       @overrides = options.fetch(:overrides, {})
       @redundant_depth = options.fetch(:redundant_depth).to_i
       @github = options.fetch(:github)
+      @license = options.fetch(:license)
+      @archive = options.fetch(:archive)
       @auto_fix = truthy?(options[:auto_fix])
       @dry_run = truthy?(options[:dry_run])
       @ci = truthy?(options[:ci])
@@ -197,6 +224,27 @@ module GemXray
 
     def github_bundle_install?
       truthy?(github.fetch(:bundle_install, true))
+    end
+
+    def license_enabled?
+      truthy?(license.fetch(:enabled, false))
+    end
+
+    def license_allowed
+      Array(license.fetch(:allowed, []))
+    end
+
+    def license_deny_unknown?
+      truthy?(license.fetch(:deny_unknown, false))
+    end
+
+    def archive_enabled?
+      truthy?(archive.fetch(:enabled, false))
+    end
+
+    def archive_github_token
+      env_var = archive.fetch(:github_token_env, "GITHUB_TOKEN")
+      ENV[env_var]
     end
 
     private

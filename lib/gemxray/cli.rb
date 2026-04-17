@@ -181,7 +181,7 @@ module GemXray
     def common_options(parser, options)
       parser.on("-f", "--format FORMAT", %w[terminal json yaml], "output format") { |value| options[:format] = value }
       parser.on("-g", "--gemfile PATH", "path to Gemfile") { |value| options[:gemfile_path] = value }
-      parser.on("--only LIST", "comma separated analyzers (unused,redundant,version)") do |value|
+      parser.on("--only LIST", "comma separated analyzers (unused,redundant,version,license,archive)") do |value|
         options[:only] = value.split(",")
       end
       parser.on("--severity LEVEL", %w[info warning danger], "minimum severity to report") do |value|
