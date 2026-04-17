@@ -10,8 +10,6 @@ module GemXray
       archive: GemXray::Analyzers::ArchiveAnalyzer
     }.freeze
 
-    DEFAULT_ANALYZERS = %i[unused redundant version].freeze
-
     def initialize(config)
       @config = config
       @gemfile_parser = GemfileParser.new(config.gemfile_path)
@@ -44,7 +42,7 @@ module GemXray
     attr_reader :config, :gemfile_parser
 
     def build_analyzers
-      selected = config.only || effective_analyzers
+      selected = config.only || ANALYZERS.keys
       code_snapshot = CodeScanner.new(config).scan if selected.include?(:unused)
       dependency_resolver = DependencyResolver.new(gemfile_parser.dependency_tree)
       stdgems_client = StdgemsClient.new
@@ -62,13 +60,6 @@ module GemXray
           gem_metadata_resolver: gem_metadata_resolver
         )
       end
-    end
-
-    def effective_analyzers
-      extras = []
-      extras << :license if config.license_enabled?
-      extras << :archive if config.archive_enabled?
-      DEFAULT_ANALYZERS + extras
     end
 
     def merge_results(results)

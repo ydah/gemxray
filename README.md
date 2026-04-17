@@ -13,8 +13,8 @@ GemXray combines five analyzers to find issues in your Gemfile:
 | `unused` | No `require`, constant reference, gemspec dependency, or Rails autoload signal was found. | On |
 | `redundant` | Another top-level gem already brings the gem in through `Gemfile.lock`. | On |
 | `version` | The gem is already covered by your Ruby or Rails version (default/bundled gem). | On |
-| `license` | Gem license is not in the configured allowed list or is unknown. | Off |
-| `archive` | Gem's source repository on GitHub has been archived. | Off |
+| `license` | Gem license is not in the configured allowed list or is unknown. | On |
+| `archive` | Gem's source repository on GitHub has been archived. | On |
 
 ## Table of Contents
 
@@ -348,21 +348,21 @@ archive:
 
 ### License fields
 
-The `license` analyzer is opt-in. Enable it in config or pass `--only license`.
+The `license` analyzer runs by default. Disable it with `--only unused,redundant,version` or set `license.enabled: false` in config.
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `license.enabled` | `false` | Include the `license` analyzer in default scans. |
+| `license.enabled` | `true` | Include the `license` analyzer in default scans. |
 | `license.allowed` | `[]` | SPDX identifiers or license names that are permitted. Matching is case-insensitive and uses fingerprint normalization (e.g. `"The MIT License"` matches `"MIT"`). When empty, only unknown-license detection applies. |
 | `license.deny_unknown` | `false` | When `true`, gems with no license metadata are reported as `danger` instead of `warning`. |
 
 ### Archive fields
 
-The `archive` analyzer is opt-in. Enable it in config or pass `--only archive`.
+The `archive` analyzer runs by default. Disable it with `--only unused,redundant,version` or set `archive.enabled: false` in config.
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `archive.enabled` | `false` | Include the `archive` analyzer in default scans. |
+| `archive.enabled` | `true` | Include the `archive` analyzer in default scans. |
 | `archive.github_token_env` | `GITHUB_TOKEN` | Name of the environment variable containing a GitHub personal access token. The token is used to query the GitHub API for repository archive status. Without a token, public repositories can still be checked but rate limits are stricter. |
 | `archive.overrides` | `{}` | Manual gem-to-repository mappings (`gem_name: "owner/repo"`) for gems whose metadata does not point to the correct GitHub repository. |
 

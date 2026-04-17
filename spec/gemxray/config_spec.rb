@@ -240,7 +240,7 @@ RSpec.describe GemXray::Config do
     it "has sensible defaults" do
       config = described_class.load(gemfile_path: "/tmp/Gemfile")
 
-      expect(config.license_enabled?).to be false
+      expect(config.license_enabled?).to be true
       expect(config.license_allowed).to eq([])
       expect(config.license_deny_unknown?).to be false
     end
@@ -261,7 +261,7 @@ RSpec.describe GemXray::Config do
     it "has sensible defaults" do
       config = described_class.load(gemfile_path: "/tmp/Gemfile")
 
-      expect(config.archive_enabled?).to be false
+      expect(config.archive_enabled?).to be true
     end
 
     it "reads github token from configured env var" do

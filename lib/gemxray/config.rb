@@ -29,12 +29,12 @@ module GemXray
         bundle_install: true
       },
       license: {
-        enabled: false,
+        enabled: true,
         allowed: [],
         deny_unknown: false
       },
       archive: {
-        enabled: false,
+        enabled: true,
         github_token_env: "GITHUB_TOKEN"
       }
     }.freeze
@@ -67,7 +67,7 @@ module GemXray
         bundle_install: true
 
       license:
-        enabled: false
+        enabled: true
         allowed:
           - MIT
           - Apache-2.0
@@ -78,7 +78,7 @@ module GemXray
         deny_unknown: false
 
       archive:
-        enabled: false
+        enabled: true
         github_token_env: GITHUB_TOKEN
     YAML
 
