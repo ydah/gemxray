@@ -157,6 +157,56 @@ RSpec.describe GemXray::CLI do
     end
   end
 
+  it "lists licenses for all gems in terminal format" do
+    with_project(sample_project_files) do |project_dir|
+      fetcher = instance_double(GemXray::LicenseFetcher)
+      allow(GemXray::LicenseFetcher).to receive(:new).and_return(fetcher)
+      allow(fetcher).to receive(:fetch).and_return(
+        GemXray::LicenseFetcher::GemLicenseInfo.new(
+          name: "rails", version: "7.1.3", licenses: ["MIT"], source: :local, homepage: nil
+        )
+      )
+
+      out = StringIO.new
+      code = described_class.start(
+        ["list-licenses", "--gemfile", File.join(project_dir, "Gemfile")],
+        out: out,
+        err: StringIO.new,
+        stdin: StringIO.new
+      )
+
+      expect(code).to eq(0)
+      expect(out.string).to include("Gem")
+      expect(out.string).to include("License(s)")
+      expect(out.string).to include("MIT")
+    end
+  end
+
+  it "lists licenses as json" do
+    with_project(sample_project_files) do |project_dir|
+      fetcher = instance_double(GemXray::LicenseFetcher)
+      allow(GemXray::LicenseFetcher).to receive(:new).and_return(fetcher)
+      allow(fetcher).to receive(:fetch).and_return(
+        GemXray::LicenseFetcher::GemLicenseInfo.new(
+          name: "rails", version: "7.1.3", licenses: ["MIT"], source: :local, homepage: nil
+        )
+      )
+
+      out = StringIO.new
+      code = described_class.start(
+        ["list-licenses", "--format", "json", "--gemfile", File.join(project_dir, "Gemfile")],
+        out: out,
+        err: StringIO.new,
+        stdin: StringIO.new
+      )
+
+      expect(code).to eq(0)
+      payload = JSON.parse(out.string)
+      expect(payload).to be_an(Array)
+      expect(payload.first["licenses"]).to eq(["MIT"])
+    end
+  end
+
   it "passes PR options through and reports multiple pull requests" do
     with_project(sample_project_files) do |project_dir|
       report = instance_double(

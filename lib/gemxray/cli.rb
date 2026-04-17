@@ -5,7 +5,7 @@ require "optparse"
 module GemXray
   class CLI
     HelpRequested = Class.new(StandardError)
-    COMMANDS = %w[scan clean pr init version help].freeze
+    COMMANDS = %w[scan clean pr list-licenses init version help].freeze
 
     def self.start(argv = ARGV, out: $stdout, err: $stderr, stdin: $stdin)
       new(argv, out: out, err: err, stdin: stdin).run
@@ -25,6 +25,7 @@ module GemXray
       when "scan" then run_scan(@argv)
       when "clean" then run_clean(@argv)
       when "pr" then run_pr(@argv)
+      when "list-licenses" then run_list_licenses(@argv)
       when "init" then run_init(@argv)
       when "version"
         out.puts(GemXray::VERSION)
@@ -115,6 +116,26 @@ module GemXray
       0
     end
 
+    def run_list_licenses(argv)
+      options = parse_list_licenses_options(argv)
+      config = Config.load(options)
+      gems = GemfileParser.new(config.gemfile_path).parse
+      fetcher = LicenseFetcher.new
+
+      entries = gems.map { |gem_entry| fetcher.fetch(gem_entry.name, version: gem_entry.version) }
+                    .sort_by(&:name)
+
+      case config.format
+      when "json"
+        out.puts(JSON.pretty_generate(entries.map { |e| license_entry_to_h(e) }))
+      when "yaml"
+        out.puts(YAML.dump(entries.map { |e| license_entry_to_h(e) }))
+      else
+        render_license_table(entries)
+      end
+      0
+    end
+
     def run_init(argv)
       options = { force: false }
       OptionParser.new do |parser|
@@ -178,6 +199,23 @@ module GemXray
       options
     end
 
+    def parse_list_licenses_options(argv)
+      options = {}
+
+      OptionParser.new do |parser|
+        parser.banner = "Usage: gemxray list-licenses [options]"
+        parser.on("-f", "--format FORMAT", %w[terminal json yaml], "output format") { |value| options[:format] = value }
+        parser.on("-g", "--gemfile PATH", "path to Gemfile") { |value| options[:gemfile_path] = value }
+        parser.on("--config PATH", "path to .gemxray.yml") { |value| options[:config_path] = value }
+        parser.on("-h", "--help", "show help") do
+          out.puts(parser)
+          raise HelpRequested
+        end
+      end.parse!(argv)
+
+      options
+    end
+
     def common_options(parser, options)
       parser.on("-f", "--format FORMAT", %w[terminal json yaml], "output format") { |value| options[:format] = value }
       parser.on("-g", "--gemfile PATH", "path to Gemfile") { |value| options[:gemfile_path] = value }
@@ -216,16 +254,38 @@ module GemXray
       end
     end
 
+    def render_license_table(entries)
+      name_width = [entries.map { |e| e.name.length }.max || 0, 4].max
+      ver_width = [entries.map { |e| e.version.to_s.length }.max || 0, 7].max
+
+      out.puts(format("%-#{name_width}s  %-#{ver_width}s  %s", "Gem", "Version", "License(s)"))
+      out.puts("#{'-' * name_width}  #{'-' * ver_width}  #{'-' * 20}")
+
+      entries.each do |entry|
+        licenses = entry.licenses.empty? ? "(unknown)" : entry.licenses.join(" | ")
+        out.puts(format("%-#{name_width}s  %-#{ver_width}s  %s", entry.name, entry.version || "-", licenses))
+      end
+
+      out.puts("")
+      out.puts("Total: #{entries.length} gems")
+    end
+
+    def license_entry_to_h(entry)
+      { name: entry.name, version: entry.version, licenses: entry.licenses, source: entry.source.to_s,
+        homepage: entry.homepage }
+    end
+
     def help_text
       <<~TEXT
         gemxray [COMMAND] [OPTIONS]
 
         Commands:
-          scan     Analyze Gemfile and report removable gems
-          clean    Interactively remove reported gems from Gemfile
-          pr       Create a cleanup branch, commit, and open a GitHub PR
-          init     Generate .gemxray.yml
-          version  Print gemxray version
+          scan            Analyze Gemfile and report removable gems
+          clean           Interactively remove reported gems from Gemfile
+          pr              Create a cleanup branch, commit, and open a GitHub PR
+          list-licenses   List licenses for all gems in the Gemfile
+          init            Generate .gemxray.yml
+          version         Print gemxray version
       TEXT
     end
   end
