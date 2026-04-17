@@ -25,7 +25,7 @@ GemXray combines five analyzers to find issues in your Gemfile:
   - [`scan`](#scan)
   - [`clean`](#clean)
   - [`pr`](#pr)
-  - [`list-licenses`](#list-licenses)
+  - [`licenses`](#licenses)
   - [`init`](#init)
   - [`version`](#version)
   - [`help`](#help)
@@ -105,7 +105,7 @@ If you run `gemxray` without a command, it behaves as `gemxray scan`.
 | `scan` | Analyze the Gemfile and print findings. | `--format`, `--only`, `--severity`, `--ci`, `--fail-on`, `--gemfile`, `--config` |
 | `clean` | Remove selected gems from `Gemfile`. | `--dry-run`, `--auto-fix`, `--comment`, `--[no-]bundle` |
 | `pr` | Create a branch, commit the cleanup, and open a GitHub PR. | `--per-gem`, `--[no-]bundle`, `--comment` |
-| `list-licenses` | List licenses for all gems in the Gemfile. | `--format`, `--gemfile`, `--config` |
+| `licenses` | List licenses for all gems in the Gemfile. | `--format`, `--gemfile`, `--config` |
 | `init` | Write a starter `.gemxray.yml`. | `--force` |
 | `version` | Print the installed gemxray version. | none |
 | `help` | Print top-level help. | none |
@@ -197,9 +197,9 @@ bundle exec gemxray pr --per-gem --no-bundle
 bundle exec gemxray pr --only unused --severity danger
 ```
 
-### `list-licenses`
+### `licenses`
 
-`list-licenses` shows the license of every gem declared in the Gemfile.
+`licenses` shows the license of every gem declared in the Gemfile.
 
 Behavior:
 
@@ -209,9 +209,9 @@ Behavior:
 - Gems with no license metadata are shown as `(unknown)`.
 
 ```bash
-bundle exec gemxray list-licenses
-bundle exec gemxray list-licenses --format json
-bundle exec gemxray list-licenses --gemfile path/to/Gemfile
+bundle exec gemxray licenses
+bundle exec gemxray licenses --format json
+bundle exec gemxray licenses --gemfile path/to/Gemfile
 ```
 
 ### `init`

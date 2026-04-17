@@ -169,7 +169,7 @@ RSpec.describe GemXray::CLI do
 
       out = StringIO.new
       code = described_class.start(
-        ["list-licenses", "--gemfile", File.join(project_dir, "Gemfile")],
+        ["licenses", "--gemfile", File.join(project_dir, "Gemfile")],
         out: out,
         err: StringIO.new,
         stdin: StringIO.new
@@ -194,7 +194,7 @@ RSpec.describe GemXray::CLI do
 
       out = StringIO.new
       code = described_class.start(
-        ["list-licenses", "--format", "json", "--gemfile", File.join(project_dir, "Gemfile")],
+        ["licenses", "--format", "json", "--gemfile", File.join(project_dir, "Gemfile")],
         out: out,
         err: StringIO.new,
         stdin: StringIO.new

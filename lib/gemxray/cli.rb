@@ -5,7 +5,7 @@ require "optparse"
 module GemXray
   class CLI
     HelpRequested = Class.new(StandardError)
-    COMMANDS = %w[scan clean pr list-licenses init version help].freeze
+    COMMANDS = %w[scan clean pr licenses init version help].freeze
 
     def self.start(argv = ARGV, out: $stdout, err: $stderr, stdin: $stdin)
       new(argv, out: out, err: err, stdin: stdin).run
@@ -25,7 +25,7 @@ module GemXray
       when "scan" then run_scan(@argv)
       when "clean" then run_clean(@argv)
       when "pr" then run_pr(@argv)
-      when "list-licenses" then run_list_licenses(@argv)
+      when "licenses" then run_list_licenses(@argv)
       when "init" then run_init(@argv)
       when "version"
         out.puts(GemXray::VERSION)
@@ -203,7 +203,7 @@ module GemXray
       options = {}
 
       OptionParser.new do |parser|
-        parser.banner = "Usage: gemxray list-licenses [options]"
+        parser.banner = "Usage: gemxray licenses [options]"
         parser.on("-f", "--format FORMAT", %w[terminal json yaml], "output format") { |value| options[:format] = value }
         parser.on("-g", "--gemfile PATH", "path to Gemfile") { |value| options[:gemfile_path] = value }
         parser.on("--config PATH", "path to .gemxray.yml") { |value| options[:config_path] = value }
@@ -283,7 +283,7 @@ module GemXray
           scan            Analyze Gemfile and report removable gems
           clean           Interactively remove reported gems from Gemfile
           pr              Create a cleanup branch, commit, and open a GitHub PR
-          list-licenses   List licenses for all gems in the Gemfile
+          licenses   List licenses for all gems in the Gemfile
           init            Generate .gemxray.yml
           version         Print gemxray version
       TEXT
