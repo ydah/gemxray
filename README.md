@@ -4,15 +4,17 @@
 [![CI](https://github.com/ydah/gemxray/actions/workflows/main.yml/badge.svg)](https://github.com/ydah/gemxray/actions/workflows/main.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`.
+A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`, checks license compliance, and detects archived dependencies.
 
-GemXray combines three analyzers to find removal candidates:
+GemXray combines five analyzers to find issues in your Gemfile:
 
-| Analyzer | What it detects |
-| --- | --- |
-| `unused` | No `require`, constant reference, gemspec dependency, or Rails autoload signal was found. |
-| `redundant` | Another top-level gem already brings the gem in through `Gemfile.lock`. |
-| `version` | The gem is already covered by your Ruby or Rails version (default/bundled gem). |
+| Analyzer | What it detects | Default |
+| --- | --- | --- |
+| `unused` | No `require`, constant reference, gemspec dependency, or Rails autoload signal was found. | On |
+| `redundant` | Another top-level gem already brings the gem in through `Gemfile.lock`. | On |
+| `version` | The gem is already covered by your Ruby or Rails version (default/bundled gem). | On |
+| `license` | Gem license is not in the configured allowed list or is unknown. | Off |
+| `archive` | Gem's source repository on GitHub has been archived. | Off |
 
 ## Table of Contents
 
@@ -28,6 +30,8 @@ GemXray combines three analyzers to find removal candidates:
   - [`help`](#help)
 - [Severity](#severity)
 - [Configuration](#configuration)
+  - [License fields](#license-fields)
+  - [Archive fields](#archive-fields)
 - [Development](#development)
 - [Contributing](#contributing)
 - [License](#license)
@@ -67,6 +71,7 @@ Use structured output for CI or scripts:
 ```bash
 bundle exec gemxray scan --format json --ci --fail-on danger
 bundle exec gemxray scan --only unused,version --severity warning
+bundle exec gemxray scan --only license,archive
 ```
 
 Preview or apply Gemfile cleanup:
@@ -111,8 +116,8 @@ If you run `gemxray` without a command, it behaves as `gemxray scan`.
   Selects the target Gemfile. This also changes the project root used for file edits, `bundle install`, and git operations, because the project root is derived from the Gemfile directory.
 - `--config PATH`
   Loads a specific `.gemxray.yml` instead of the default file in the current working directory.
-- `--only unused,redundant,version`
-  Restricts analysis to the listed analyzers. This accepts a comma-separated list. For example, `--only unused` means `clean` and `pr` only act on unused-gem findings.
+- `--only unused,redundant,version,license,archive`
+  Restricts analysis to the listed analyzers. This accepts a comma-separated list. For example, `--only unused` means `clean` and `pr` only act on unused-gem findings. Using `--only` with `license` or `archive` enables those analyzers even if they are not enabled in config.
 - `--severity info|warning|danger`
   Filters the report to findings at or above the selected severity. This happens before command-specific behavior, so hidden findings are also excluded from `clean`, `pr`, and `scan --ci`.
 - `--format terminal|json|yaml`
@@ -224,8 +229,8 @@ bundle exec gemxray scan --help
 
 | Level | Meaning | Auto-fix target |
 | --- | --- | --- |
-| `danger` | High-confidence removal candidate. | Yes (`clean --auto-fix` removes these) |
-| `warning` | Likely removable, but worth a quick review. | No |
+| `danger` | High-confidence removal candidate, license violation, or unknown license (when `deny_unknown` is enabled). | Yes (`clean --auto-fix` removes these) |
+| `warning` | Likely removable, archived repository, or unknown license. Worth a quick review. | No |
 | `info` | Informative hint (pinned versions, lower-confidence redundancy). | No |
 
 ## Configuration
@@ -268,6 +273,21 @@ github:
   reviewers: []
   per_gem: false
   bundle_install: true
+
+license:
+  enabled: false
+  allowed:
+    - MIT
+    - Apache-2.0
+    - BSD-2-Clause
+    - BSD-3-Clause
+    - ISC
+    - Ruby
+  deny_unknown: false
+
+archive:
+  enabled: false
+  github_token_env: GITHUB_TOKEN
 ```
 
 ### Top-level fields
@@ -277,7 +297,7 @@ github:
 | `version` | `1` | Schema marker for future compatibility. Currently accepted but does not change behavior. |
 | `gemfile_path` | `Gemfile` | Path to the target Gemfile. Expanded from the current working directory. |
 | `format` | `terminal` | Output format for `scan`. Accepted: `terminal`, `json`, `yaml`. |
-| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`. |
+| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`, `license`, `archive`. |
 | `severity` | `info` | Minimum severity kept in the report. Also limits what `clean`, `pr`, and `scan --ci` can act on. |
 | `ci` | `false` | Enables CI-style exit codes for `scan`. |
 | `ci_fail_on` | `warning` | Minimum severity that makes `scan --ci` exit with status `1`. |
@@ -306,6 +326,26 @@ github:
 | `github.reviewers` | `[]` | Reviewers requested on created PRs. |
 | `github.per_gem` | `false` | When `true`, `pr` creates one branch and one PR per gem. |
 | `github.bundle_install` | `true` | Controls whether `pr` runs `bundle install` before committing. |
+
+### License fields
+
+The `license` analyzer is opt-in. Enable it in config or pass `--only license`.
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `license.enabled` | `false` | Include the `license` analyzer in default scans. |
+| `license.allowed` | `[]` | SPDX identifiers or license names that are permitted. Matching is case-insensitive and uses fingerprint normalization (e.g. `"The MIT License"` matches `"MIT"`). When empty, only unknown-license detection applies. |
+| `license.deny_unknown` | `false` | When `true`, gems with no license metadata are reported as `danger` instead of `warning`. |
+
+### Archive fields
+
+The `archive` analyzer is opt-in. Enable it in config or pass `--only archive`.
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `archive.enabled` | `false` | Include the `archive` analyzer in default scans. |
+| `archive.github_token_env` | `GITHUB_TOKEN` | Name of the environment variable containing a GitHub personal access token. The token is used to query the GitHub API for repository archive status. Without a token, public repositories can still be checked but rate limits are stricter. |
+| `archive.overrides` | `{}` | Manual gem-to-repository mappings (`gem_name: "owner/repo"`) for gems whose metadata does not point to the correct GitHub repository. |
 
 ## Development
 
