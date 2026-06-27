@@ -3,6 +3,11 @@
 require "stringio"
 
 RSpec.describe "scan and clean integration" do
+  before do
+    security_fetcher = instance_double(GemXray::SecurityAdvisoryFetcher, fetch: [])
+    allow(GemXray::SecurityAdvisoryFetcher).to receive(:new).and_return(security_fetcher)
+  end
+
   it "scans a fixture project and applies clean in dry-run mode with previews" do
     with_project(sample_project_files) do |project_dir|
       gemfile_path = File.join(project_dir, "Gemfile")

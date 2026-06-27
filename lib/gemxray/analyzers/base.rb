@@ -30,12 +30,13 @@ module GemXray
         config.whitelisted?(gem_entry.name) || config.ignore_gem?(gem_entry.name)
       end
 
-      def build_result(gem_entry:, type:, severity:, detail:)
+      def build_result(gem_entry:, type:, severity:, detail:, suggestion: nil)
         Result.new(
           gem_name: gem_entry.name,
           gemfile_line: gem_entry.line_number,
           gemfile_end_line: gem_entry.end_line,
           gemfile_group: gem_entry.gemfile_group,
+          suggestion: suggestion,
           reasons: [Result::Reason.new(type: type, detail: detail, severity: severity)],
           severity: severity
         )

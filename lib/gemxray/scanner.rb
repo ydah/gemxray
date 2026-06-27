@@ -7,7 +7,8 @@ module GemXray
       redundant: GemXray::Analyzers::RedundantAnalyzer,
       version: GemXray::Analyzers::VersionAnalyzer,
       license: GemXray::Analyzers::LicenseAnalyzer,
-      archive: GemXray::Analyzers::ArchiveAnalyzer
+      archive: GemXray::Analyzers::ArchiveAnalyzer,
+      security: GemXray::Analyzers::SecurityAnalyzer
     }.freeze
 
     def initialize(config)
@@ -42,7 +43,7 @@ module GemXray
     attr_reader :config, :gemfile_parser
 
     def build_analyzers
-      selected = config.only || ANALYZERS.keys
+      selected = config.only || enabled_analyzers
       code_snapshot = CodeScanner.new(config).scan if selected.include?(:unused)
       dependency_resolver = DependencyResolver.new(gemfile_parser.dependency_tree)
       stdgems_client = StdgemsClient.new
@@ -59,6 +60,17 @@ module GemXray
           rails_knowledge: rails_knowledge,
           gem_metadata_resolver: gem_metadata_resolver
         )
+      end
+    end
+
+    def enabled_analyzers
+      ANALYZERS.keys.select do |type|
+        case type
+        when :license then config.license_enabled?
+        when :archive then config.archive_enabled?
+        when :security then config.security_enabled?
+        else true
+        end
       end
     end
 

@@ -274,6 +274,27 @@ RSpec.describe GemXray::Config do
     end
   end
 
+  describe "security config" do
+    it "has sensible defaults" do
+      config = described_class.load(gemfile_path: "/tmp/Gemfile")
+
+      expect(config.security_enabled?).to be true
+      expect(config.security_advisory_db_path).to be_nil
+      expect(config.security_cache_ttl).to eq(86_400)
+    end
+
+    it "can use a local advisory database path" do
+      config = described_class.load(
+        gemfile_path: "/tmp/Gemfile",
+        security: { enabled: true, advisory_db_path: "/tmp/ruby-advisory-db", cache_ttl: 0 }
+      )
+
+      expect(config.security_enabled?).to be true
+      expect(config.security_advisory_db_path).to eq("/tmp/ruby-advisory-db")
+      expect(config.security_cache_ttl).to eq(0)
+    end
+  end
+
   describe "boolean flags" do
     it "treats string 'true' as truthy" do
       config = described_class.load(gemfile_path: "/tmp/Gemfile", ci: "true")

@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 RSpec.describe GemXray::Scanner do
+  before do
+    security_fetcher = instance_double(GemXray::SecurityAdvisoryFetcher, fetch: [])
+    allow(GemXray::SecurityAdvisoryFetcher).to receive(:new).and_return(security_fetcher)
+  end
+
   describe "#run" do
     it "returns a Report with detected issues" do
       with_project(sample_project_files) do |dir|

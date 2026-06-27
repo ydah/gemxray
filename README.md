@@ -4,9 +4,9 @@
 [![CI](https://github.com/ydah/gemxray/actions/workflows/main.yml/badge.svg)](https://github.com/ydah/gemxray/actions/workflows/main.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`, checks license compliance, and detects archived dependencies.
+A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`, checks license compliance, detects archived dependencies, and reports vulnerable gems.
 
-GemXray combines five analyzers to find issues in your Gemfile:
+GemXray combines six analyzers to find issues in your Gemfile and lockfile:
 
 | Analyzer | What it detects | Default |
 | --- | --- | --- |
@@ -15,6 +15,7 @@ GemXray combines five analyzers to find issues in your Gemfile:
 | `version` | The gem is already covered by your Ruby or Rails version (default/bundled gem). | On |
 | `license` | Gem license is not in the configured allowed list or is unknown. | On |
 | `archive` | Gem's source repository on GitHub has been archived. | On |
+| `security` | A locked gem version matches a known ruby-advisory-db vulnerability. | On |
 
 ## Table of Contents
 
@@ -33,6 +34,7 @@ GemXray combines five analyzers to find issues in your Gemfile:
 - [Configuration](#configuration)
   - [License fields](#license-fields)
   - [Archive fields](#archive-fields)
+  - [Security fields](#security-fields)
 - [Development](#development)
 - [Contributing](#contributing)
 - [License](#license)
@@ -72,7 +74,7 @@ Use structured output for CI or scripts:
 ```bash
 bundle exec gemxray scan --format json --ci --fail-on danger
 bundle exec gemxray scan --only unused,version --severity warning
-bundle exec gemxray scan --only license,archive
+bundle exec gemxray scan --only license,archive,security
 ```
 
 Preview or apply Gemfile cleanup:
@@ -118,8 +120,8 @@ If you run `gemxray` without a command, it behaves as `gemxray scan`.
   Selects the target Gemfile. This also changes the project root used for file edits, `bundle install`, and git operations, because the project root is derived from the Gemfile directory.
 - `--config PATH`
   Loads a specific `.gemxray.yml` instead of the default file in the current working directory.
-- `--only unused,redundant,version,license,archive`
-  Restricts analysis to the listed analyzers. This accepts a comma-separated list. For example, `--only unused` means `clean` and `pr` only act on unused-gem findings. Using `--only` with `license` or `archive` enables those analyzers even if they are not enabled in config.
+- `--only unused,redundant,version,license,archive,security`
+  Restricts analysis to the listed analyzers. This accepts a comma-separated list. For example, `--only unused` means `clean` and `pr` only act on unused-gem findings. Using `--only` with `license`, `archive`, or `security` enables those analyzers even if they are not enabled in config.
 - `--severity info|warning|danger`
   Filters the report to findings at or above the selected severity. This happens before command-specific behavior, so hidden findings are also excluded from `clean`, `pr`, and `scan --ci`.
 - `--format terminal|json|yaml`
@@ -150,11 +152,11 @@ bundle exec gemxray scan --only unused --severity warning
 
 ### `clean`
 
-`clean` runs the same analysis pipeline as `scan`, then edits the Gemfile based on the reported results.
+`clean` runs the same analysis pipeline as `scan`, then edits the Gemfile based on cleanup-candidate results.
 
 Behavior:
 
-- Without `--auto-fix`, it prompts once per reported result: `Remove <gem> (<severity>)? [y/N]:`.
+- Without `--auto-fix`, it prompts once per cleanup candidate: `Remove <gem> (<severity>)? [y/N]:`.
 - Only `y` and `yes` remove the gem. Any other answer skips it.
 - It edits the full detected source range, so multiline gem declarations are removed as a unit.
 - It writes a backup file at `Gemfile.bak` before saving changes.
@@ -162,7 +164,7 @@ Behavior:
 
 Command-specific options:
 
-- `--auto-fix` -- Skips prompts and removes every reported `danger` finding automatically. `warning` and `info` findings are never auto-removed.
+- `--auto-fix` -- Skips prompts and removes every cleanup-candidate `danger` finding automatically. `warning`, `info`, and security-only findings are never auto-removed.
 - `--dry-run` -- Does not write the Gemfile. Instead, it prints the selected candidates and a preview hunk showing the lines that would be removed or replaced.
 - `--comment` -- Replaces each removed gem entry with a comment such as `# Removed by gemxray: ...` instead of deleting the lines outright.
 - `--bundle`, `--no-bundle` -- After a real edit, `--bundle` runs `bundle install` in the target project. It is skipped automatically during `--dry-run` and when no gems were actually removed.
@@ -179,7 +181,7 @@ bundle exec gemxray clean --dry-run --comment
 
 Behavior:
 
-- It fails if the report is empty after filters are applied.
+- It fails if no cleanup candidates remain after filters are applied.
 - It requires the target project to be inside a git repository with a clean worktree before it starts.
 - It switches to `github.base_branch`, creates a cleanup branch, edits the Gemfile, commits the change, optionally refreshes `Gemfile.lock`, pushes the branch, and opens a PR.
 - It tries `gh pr create` first. If `gh` is unavailable, it falls back to the GitHub API when `GH_TOKEN` or `GITHUB_TOKEN` is set.
@@ -187,7 +189,7 @@ Behavior:
 
 Command-specific options:
 
-- `--per-gem` -- Creates one branch and one pull request per reported gem instead of grouping everything into a single cleanup PR.
+- `--per-gem` -- Creates one branch and one pull request per cleanup candidate instead of grouping everything into a single cleanup PR.
 - `--comment` -- Leaves comments in the Gemfile instead of deleting lines, using the same replacement behavior as `clean --comment`.
 - `--bundle`, `--no-bundle` -- Controls whether `pr` runs `bundle install` before committing. The default is `--bundle` (from `github.bundle_install: true`).
 
@@ -248,7 +250,7 @@ bundle exec gemxray scan --help
 
 | Level | Meaning | Auto-fix target |
 | --- | --- | --- |
-| `danger` | High-confidence removal candidate, license violation, or unknown license (when `deny_unknown` is enabled). | Yes (`clean --auto-fix` removes these) |
+| `danger` | High-confidence removal candidate, license violation, known vulnerability, or unknown license (when `deny_unknown` is enabled). | Yes for cleanup candidates; security-only findings are not auto-removed |
 | `warning` | Likely removable, archived repository, or unknown license. Worth a quick review. | No |
 | `info` | Informative hint (pinned versions, lower-confidence redundancy). | No |
 
@@ -307,6 +309,12 @@ license:
 archive:
   enabled: false
   github_token_env: GITHUB_TOKEN
+
+security:
+  enabled: false
+  advisory_db_path:
+  github_token_env: GITHUB_TOKEN
+  cache_ttl: 86400
 ```
 
 ### Top-level fields
@@ -316,11 +324,11 @@ archive:
 | `version` | `1` | Schema marker for future compatibility. Currently accepted but does not change behavior. |
 | `gemfile_path` | `Gemfile` | Path to the target Gemfile. Expanded from the current working directory. |
 | `format` | `terminal` | Output format for `scan`. Accepted: `terminal`, `json`, `yaml`. |
-| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`, `license`, `archive`. |
+| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`, `license`, `archive`, `security`. |
 | `severity` | `info` | Minimum severity kept in the report. Also limits what `clean`, `pr`, and `scan --ci` can act on. |
 | `ci` | `false` | Enables CI-style exit codes for `scan`. |
 | `ci_fail_on` | `warning` | Minimum severity that makes `scan --ci` exit with status `1`. |
-| `auto_fix` | `false` | When `true`, `clean` removes `danger` findings without prompting. |
+| `auto_fix` | `false` | When `true`, `clean` removes cleanup-candidate `danger` findings without prompting. |
 | `dry_run` | `false` | When `true`, `clean` previews changes without writing the Gemfile. |
 | `comment` | `false` | When `true`, gem entries are replaced with comments instead of being deleted. |
 | `bundle_install` | `false` | When `true`, `clean` runs `bundle install` after editing. Does not affect `pr`. |
@@ -328,6 +336,8 @@ archive:
 | `scan_dirs` | `[]` | Extra directories added to the built-in scan roots (`app`, `lib`, `config`, `db`, `script`, `bin`, `exe`, `spec`, `test`, `tasks`). |
 | `redundant_depth` | `2` | Maximum dependency depth for the `redundant` analyzer in `Gemfile.lock`. |
 | `overrides` | `{}` | Per-gem overrides keyed by gem name. |
+
+Security-only findings are reported by `scan` but are not treated as Gemfile cleanup candidates by `clean` or `pr`. Update the vulnerable gem, update the parent dependency that brings it in, or remove it manually if it is also unused.
 
 ### Override fields
 
@@ -365,6 +375,17 @@ The `archive` analyzer runs by default. Disable it with `--only unused,redundant
 | `archive.enabled` | `true` | Include the `archive` analyzer in default scans. |
 | `archive.github_token_env` | `GITHUB_TOKEN` | Name of the environment variable containing a GitHub personal access token. The token is used to query the GitHub API for repository archive status. Without a token, public repositories can still be checked but rate limits are stricter. |
 | `archive.overrides` | `{}` | Manual gem-to-repository mappings (`gem_name: "owner/repo"`) for gems whose metadata does not point to the correct GitHub repository. |
+
+### Security fields
+
+The `security` analyzer runs by default. Disable it with `--only unused,redundant,version` or set `security.enabled: false` in config.
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `security.enabled` | `true` | Include the `security` analyzer in default scans. |
+| `security.advisory_db_path` | empty | Optional path to a local `ruby-advisory-db` checkout. When omitted, gemxray fetches advisories from `rubysec/ruby-advisory-db` on GitHub. |
+| `security.github_token_env` | `GITHUB_TOKEN` | Name of the environment variable containing a GitHub token for ruby-advisory-db API requests. Public unauthenticated requests still work but have stricter rate limits. |
+| `security.cache_ttl` | `86400` | Seconds to cache fetched advisory data under `~/.gemxray/cache/security`. Set to `0` to disable the disk cache. |
 
 ## Development
 

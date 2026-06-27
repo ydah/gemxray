@@ -140,6 +140,38 @@ RSpec.describe GemXray::Result do
     end
   end
 
+  describe "#cleanup_candidate?" do
+    it "returns true for Gemfile-backed removal findings" do
+      result = build_result
+
+      expect(result.cleanup_candidate?).to be true
+    end
+
+    it "returns false for security-only findings" do
+      result = build_result(
+        reasons: [
+          described_class::Reason.new(type: :security_vulnerability, detail: "vulnerable", severity: :danger)
+        ],
+        severity: :danger
+      )
+
+      expect(result.cleanup_candidate?).to be false
+    end
+
+    it "returns true when a security finding is merged with a cleanup finding" do
+      result = build_result
+      result.add_reason(type: :security_vulnerability, detail: "vulnerable", severity: :danger)
+
+      expect(result.cleanup_candidate?).to be true
+    end
+
+    it "returns false without a Gemfile line" do
+      result = build_result(gemfile_line: nil, gemfile_end_line: nil)
+
+      expect(result.cleanup_candidate?).to be false
+    end
+  end
+
   describe "#to_h" do
     it "returns a hash representation" do
       result = build_result

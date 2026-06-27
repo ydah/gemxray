@@ -36,6 +36,12 @@ module GemXray
       archive: {
         enabled: true,
         github_token_env: "GITHUB_TOKEN"
+      },
+      security: {
+        enabled: true,
+        advisory_db_path: nil,
+        github_token_env: "GITHUB_TOKEN",
+        cache_ttl: 86_400
       }
     }.freeze
     SEVERITY_ORDER = { danger: 0, warning: 1, info: 2 }.freeze
@@ -80,11 +86,17 @@ module GemXray
       archive:
         enabled: true
         github_token_env: GITHUB_TOKEN
+
+      security:
+        enabled: true
+        advisory_db_path:
+        github_token_env: GITHUB_TOKEN
+        cache_ttl: 86400
     YAML
 
     attr_reader :config_path, :gemfile_path, :format, :only, :severity_threshold, :whitelist,
                 :scan_dirs, :overrides, :redundant_depth, :github, :ci_fail_threshold,
-                :license, :archive
+                :license, :archive, :security
 
     def self.load(options = {})
       raw_options = symbolize_keys(options)
@@ -140,6 +152,7 @@ module GemXray
       @github = options.fetch(:github)
       @license = options.fetch(:license)
       @archive = options.fetch(:archive)
+      @security = options.fetch(:security)
       @auto_fix = truthy?(options[:auto_fix])
       @dry_run = truthy?(options[:dry_run])
       @ci = truthy?(options[:ci])
@@ -244,6 +257,23 @@ module GemXray
 
     def archive_github_token
       env_var = archive.fetch(:github_token_env, "GITHUB_TOKEN")
+      ENV[env_var]
+    end
+
+    def security_enabled?
+      truthy?(security.fetch(:enabled, false))
+    end
+
+    def security_advisory_db_path
+      security.fetch(:advisory_db_path, nil)
+    end
+
+    def security_cache_ttl
+      security.fetch(:cache_ttl, 86_400).to_i
+    end
+
+    def security_github_token
+      env_var = security.fetch(:github_token_env, "GITHUB_TOKEN")
       ENV[env_var]
     end
 

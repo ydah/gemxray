@@ -70,7 +70,8 @@ module GemXray
       options = parse_clean_options(argv)
       config = Config.load(options)
       report = Scanner.new(config).run
-      candidates = config.auto_fix? ? report.results.select(&:danger?) : interactive_selection(report.results)
+      cleanup_results = report.results.select(&:cleanup_candidate?)
+      candidates = config.auto_fix? ? cleanup_results.select(&:danger?) : interactive_selection(cleanup_results)
 
       if candidates.empty?
         out.puts("No removable gems were selected.")
@@ -93,10 +94,11 @@ module GemXray
       options = parse_pr_options(argv)
       config = Config.load(options)
       report = Scanner.new(config).run
-      raise Error, "no PR candidates were found" if report.results.empty?
+      cleanup_results = report.results.select(&:cleanup_candidate?)
+      raise Error, "no PR candidates were found" if cleanup_results.empty?
 
       result = Editors::GithubPr.new(config).create(
-        report.results,
+        cleanup_results,
         per_gem: options.fetch(:per_gem, config.github_per_gem?),
         bundle_install: options.fetch(:bundle_install, config.github_bundle_install?),
         comment: config.comment?
@@ -219,7 +221,7 @@ module GemXray
     def common_options(parser, options)
       parser.on("-f", "--format FORMAT", %w[terminal json yaml], "output format") { |value| options[:format] = value }
       parser.on("-g", "--gemfile PATH", "path to Gemfile") { |value| options[:gemfile_path] = value }
-      parser.on("--only LIST", "comma separated analyzers (unused,redundant,version,license,archive)") do |value|
+      parser.on("--only LIST", "comma separated analyzers (unused,redundant,version,license,archive,security)") do |value|
         options[:only] = value.split(",")
       end
       parser.on("--severity LEVEL", %w[info warning danger], "minimum severity to report") do |value|
@@ -280,7 +282,7 @@ module GemXray
         gemxray [COMMAND] [OPTIONS]
 
         Commands:
-          scan            Analyze Gemfile and report removable gems
+          scan            Analyze Gemfile and report dependency findings
           clean           Interactively remove reported gems from Gemfile
           pr              Create a cleanup branch, commit, and open a GitHub PR
           licenses   List licenses for all gems in the Gemfile

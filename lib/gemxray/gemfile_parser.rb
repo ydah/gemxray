@@ -67,6 +67,15 @@ module GemXray
       parser.specs.find { |spec| spec.name == gem_name }&.version
     end
 
+    def locked_versions
+      parser = lockfile_parser
+      return {} unless parser
+
+      parser.specs.each_with_object({}) do |spec, versions|
+        versions[spec.name] = spec.version
+      end
+    end
+
     private
 
     def bundler_dependencies

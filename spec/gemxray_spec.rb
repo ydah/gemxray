@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 RSpec.describe GemXray do
+  before do
+    security_fetcher = instance_double(GemXray::SecurityAdvisoryFetcher, fetch: [])
+    allow(GemXray::SecurityAdvisoryFetcher).to receive(:new).and_return(security_fetcher)
+  end
+
   it "has a version number" do
     expect(GemXray::VERSION).not_to be_nil
   end

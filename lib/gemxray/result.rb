@@ -3,6 +3,7 @@
 module GemXray
   class Result
     SEVERITIES = { danger: 0, warning: 1, info: 2 }.freeze
+    NON_CLEANUP_REASON_TYPES = %i[security_vulnerability].freeze
 
     Reason = Struct.new(:type, :detail, :severity, keyword_init: true) do
       def to_h
@@ -59,6 +60,12 @@ module GemXray
 
     def info?
       severity == :info
+    end
+
+    def cleanup_candidate?
+      return false unless gemfile_line
+
+      (reason_types - NON_CLEANUP_REASON_TYPES).any?
     end
 
     def to_h
