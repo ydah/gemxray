@@ -6,6 +6,17 @@ RSpec.describe GemXray::CLI do
   before do
     security_fetcher = instance_double(GemXray::SecurityAdvisoryFetcher, fetch: [])
     allow(GemXray::SecurityAdvisoryFetcher).to receive(:new).and_return(security_fetcher)
+    deprecated_info = GemXray::DeprecatedGemFetcher::GemDeprecationInfo.new(
+      name: "gem",
+      version: "1.0.0",
+      yanked: false,
+      post_install_message: nil,
+      readme_deprecated: false,
+      readme_url: nil,
+      source: :unknown
+    )
+    deprecated_fetcher = instance_double(GemXray::DeprecatedGemFetcher, fetch: deprecated_info)
+    allow(GemXray::DeprecatedGemFetcher).to receive(:new).and_return(deprecated_fetcher)
   end
 
   def build_report(results)
@@ -143,6 +154,7 @@ RSpec.describe GemXray::CLI do
     expect(code).to eq(0)
     expect(out.string).to include("Usage: gemxray scan [options]")
     expect(out.string).to include("security")
+    expect(out.string).to include("deprecated")
     expect(err.string).to eq("")
   end
 
@@ -185,6 +197,48 @@ RSpec.describe GemXray::CLI do
       expect(code).to eq(0)
       expect(out.string).to include("No removable gems were selected.")
       expect(File.read(gemfile_path)).to include('gem "rack"')
+    end
+  end
+
+  it "does not treat deprecated-only findings as clean targets" do
+    with_project(
+      "Gemfile" => <<~RUBY
+        source "https://rubygems.org"
+
+        gem "old_gem"
+      RUBY
+    ) do |project_dir|
+      gemfile_path = File.join(project_dir, "Gemfile")
+      report = build_report(
+        [
+          GemXray::Result.new(
+            gem_name: "old_gem",
+            gemfile_line: 3,
+            reasons: [
+              GemXray::Result::Reason.new(
+                type: :deprecated_yanked,
+                detail: "old_gem 1.0.0 has been yanked from RubyGems",
+                severity: :danger
+              )
+            ],
+            severity: :danger
+          )
+        ]
+      )
+      scanner = instance_double(GemXray::Scanner, run: report)
+      allow(GemXray::Scanner).to receive(:new).and_return(scanner)
+
+      out = StringIO.new
+      code = described_class.start(
+        ["clean", "--auto-fix", "--gemfile", gemfile_path],
+        out: out,
+        err: StringIO.new,
+        stdin: StringIO.new
+      )
+
+      expect(code).to eq(0)
+      expect(out.string).to include("No removable gems were selected.")
+      expect(File.read(gemfile_path)).to include('gem "old_gem"')
     end
   end
 

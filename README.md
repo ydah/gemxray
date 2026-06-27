@@ -4,9 +4,9 @@
 [![CI](https://github.com/ydah/gemxray/actions/workflows/main.yml/badge.svg)](https://github.com/ydah/gemxray/actions/workflows/main.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`, checks license compliance, detects archived dependencies, and reports vulnerable gems.
+A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`, checks license compliance, detects archived or deprecated dependencies, and reports vulnerable gems.
 
-GemXray combines six analyzers to find issues in your Gemfile and lockfile:
+GemXray combines seven analyzers to find issues in your Gemfile and lockfile:
 
 | Analyzer | What it detects | Default |
 | --- | --- | --- |
@@ -16,6 +16,7 @@ GemXray combines six analyzers to find issues in your Gemfile and lockfile:
 | `license` | Gem license is not in the configured allowed list or is unknown. | On |
 | `archive` | Gem's source repository on GitHub has been archived. | On |
 | `security` | A locked gem version matches a known ruby-advisory-db vulnerability. | On |
+| `deprecated` | RubyGems marks the version yanked, post-install metadata says deprecated, or README says "This gem is deprecated". | On |
 
 ## Table of Contents
 
@@ -35,6 +36,7 @@ GemXray combines six analyzers to find issues in your Gemfile and lockfile:
   - [License fields](#license-fields)
   - [Archive fields](#archive-fields)
   - [Security fields](#security-fields)
+  - [Deprecated fields](#deprecated-fields)
 - [Development](#development)
 - [Contributing](#contributing)
 - [License](#license)
@@ -74,7 +76,7 @@ Use structured output for CI or scripts:
 ```bash
 bundle exec gemxray scan --format json --ci --fail-on danger
 bundle exec gemxray scan --only unused,version --severity warning
-bundle exec gemxray scan --only license,archive,security
+bundle exec gemxray scan --only license,archive,security,deprecated
 ```
 
 Preview or apply Gemfile cleanup:
@@ -120,8 +122,8 @@ If you run `gemxray` without a command, it behaves as `gemxray scan`.
   Selects the target Gemfile. This also changes the project root used for file edits, `bundle install`, and git operations, because the project root is derived from the Gemfile directory.
 - `--config PATH`
   Loads a specific `.gemxray.yml` instead of the default file in the current working directory.
-- `--only unused,redundant,version,license,archive,security`
-  Restricts analysis to the listed analyzers. This accepts a comma-separated list. For example, `--only unused` means `clean` and `pr` only act on unused-gem findings. Using `--only` with `license`, `archive`, or `security` enables those analyzers even if they are not enabled in config.
+- `--only unused,redundant,version,license,archive,security,deprecated`
+  Restricts analysis to the listed analyzers. This accepts a comma-separated list. For example, `--only unused` means `clean` and `pr` only act on unused-gem findings. Using `--only` with `license`, `archive`, `security`, or `deprecated` enables those analyzers even if they are not enabled in config.
 - `--severity info|warning|danger`
   Filters the report to findings at or above the selected severity. This happens before command-specific behavior, so hidden findings are also excluded from `clean`, `pr`, and `scan --ci`.
 - `--format terminal|json|yaml`
@@ -164,7 +166,7 @@ Behavior:
 
 Command-specific options:
 
-- `--auto-fix` -- Skips prompts and removes every cleanup-candidate `danger` finding automatically. `warning`, `info`, and security-only findings are never auto-removed.
+- `--auto-fix` -- Skips prompts and removes every cleanup-candidate `danger` finding automatically. `warning`, `info`, security-only findings, and deprecated-only findings are never auto-removed.
 - `--dry-run` -- Does not write the Gemfile. Instead, it prints the selected candidates and a preview hunk showing the lines that would be removed or replaced.
 - `--comment` -- Replaces each removed gem entry with a comment such as `# Removed by gemxray: ...` instead of deleting the lines outright.
 - `--bundle`, `--no-bundle` -- After a real edit, `--bundle` runs `bundle install` in the target project. It is skipped automatically during `--dry-run` and when no gems were actually removed.
@@ -250,8 +252,8 @@ bundle exec gemxray scan --help
 
 | Level | Meaning | Auto-fix target |
 | --- | --- | --- |
-| `danger` | High-confidence removal candidate, license violation, known vulnerability, or unknown license (when `deny_unknown` is enabled). | Yes for cleanup candidates; security-only findings are not auto-removed |
-| `warning` | Likely removable, archived repository, or unknown license. Worth a quick review. | No |
+| `danger` | High-confidence removal candidate, license violation, known vulnerability, yanked gem version, or unknown license (when `deny_unknown` is enabled). | Yes for cleanup candidates; security/deprecated-only findings are not auto-removed |
+| `warning` | Likely removable, archived repository, deprecated gem, or unknown license. Worth a quick review. | No |
 | `info` | Informative hint (pinned versions, lower-confidence redundancy). | No |
 
 ## Configuration
@@ -315,6 +317,10 @@ security:
   advisory_db_path:
   github_token_env: GITHUB_TOKEN
   cache_ttl: 86400
+
+deprecated:
+  enabled: false
+  check_readme: true
 ```
 
 ### Top-level fields
@@ -324,7 +330,7 @@ security:
 | `version` | `1` | Schema marker for future compatibility. Currently accepted but does not change behavior. |
 | `gemfile_path` | `Gemfile` | Path to the target Gemfile. Expanded from the current working directory. |
 | `format` | `terminal` | Output format for `scan`. Accepted: `terminal`, `json`, `yaml`. |
-| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`, `license`, `archive`, `security`. |
+| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`, `license`, `archive`, `security`, `deprecated`. |
 | `severity` | `info` | Minimum severity kept in the report. Also limits what `clean`, `pr`, and `scan --ci` can act on. |
 | `ci` | `false` | Enables CI-style exit codes for `scan`. |
 | `ci_fail_on` | `warning` | Minimum severity that makes `scan --ci` exit with status `1`. |
@@ -337,7 +343,7 @@ security:
 | `redundant_depth` | `2` | Maximum dependency depth for the `redundant` analyzer in `Gemfile.lock`. |
 | `overrides` | `{}` | Per-gem overrides keyed by gem name. |
 
-Security-only findings are reported by `scan` but are not treated as Gemfile cleanup candidates by `clean` or `pr`. Update the vulnerable gem, update the parent dependency that brings it in, or remove it manually if it is also unused.
+Security-only and deprecated-only findings are reported by `scan` but are not treated as Gemfile cleanup candidates by `clean` or `pr`. Update the affected gem, update the parent dependency that brings it in, replace it with a maintained alternative, or remove it manually if it is also unused.
 
 ### Override fields
 
@@ -386,6 +392,15 @@ The `security` analyzer runs by default. Disable it with `--only unused,redundan
 | `security.advisory_db_path` | empty | Optional path to a local `ruby-advisory-db` checkout. When omitted, gemxray fetches advisories from `rubysec/ruby-advisory-db` on GitHub. |
 | `security.github_token_env` | `GITHUB_TOKEN` | Name of the environment variable containing a GitHub token for ruby-advisory-db API requests. Public unauthenticated requests still work but have stricter rate limits. |
 | `security.cache_ttl` | `86400` | Seconds to cache fetched advisory data under `~/.gemxray/cache/security`. Set to `0` to disable the disk cache. |
+
+### Deprecated fields
+
+The `deprecated` analyzer runs by default. Disable it with `--only unused,redundant,version` or set `deprecated.enabled: false` in config.
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `deprecated.enabled` | `true` | Include the `deprecated` analyzer in default scans. |
+| `deprecated.check_readme` | `true` | Fetch GitHub README files referenced by RubyGems metadata and flag the gem when README contains `This gem is deprecated`. |
 
 ## Development
 

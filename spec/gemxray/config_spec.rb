@@ -295,6 +295,25 @@ RSpec.describe GemXray::Config do
     end
   end
 
+  describe "deprecated config" do
+    it "has sensible defaults" do
+      config = described_class.load(gemfile_path: "/tmp/Gemfile")
+
+      expect(config.deprecated_enabled?).to be true
+      expect(config.deprecated_check_readme?).to be true
+    end
+
+    it "can disable README checks" do
+      config = described_class.load(
+        gemfile_path: "/tmp/Gemfile",
+        deprecated: { enabled: true, check_readme: false }
+      )
+
+      expect(config.deprecated_enabled?).to be true
+      expect(config.deprecated_check_readme?).to be false
+    end
+  end
+
   describe "boolean flags" do
     it "treats string 'true' as truthy" do
       config = described_class.load(gemfile_path: "/tmp/Gemfile", ci: "true")

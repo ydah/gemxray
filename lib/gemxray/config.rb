@@ -42,6 +42,10 @@ module GemXray
         advisory_db_path: nil,
         github_token_env: "GITHUB_TOKEN",
         cache_ttl: 86_400
+      },
+      deprecated: {
+        enabled: true,
+        check_readme: true
       }
     }.freeze
     SEVERITY_ORDER = { danger: 0, warning: 1, info: 2 }.freeze
@@ -92,11 +96,15 @@ module GemXray
         advisory_db_path:
         github_token_env: GITHUB_TOKEN
         cache_ttl: 86400
+
+      deprecated:
+        enabled: true
+        check_readme: true
     YAML
 
     attr_reader :config_path, :gemfile_path, :format, :only, :severity_threshold, :whitelist,
                 :scan_dirs, :overrides, :redundant_depth, :github, :ci_fail_threshold,
-                :license, :archive, :security
+                :license, :archive, :security, :deprecated
 
     def self.load(options = {})
       raw_options = symbolize_keys(options)
@@ -153,6 +161,7 @@ module GemXray
       @license = options.fetch(:license)
       @archive = options.fetch(:archive)
       @security = options.fetch(:security)
+      @deprecated = options.fetch(:deprecated)
       @auto_fix = truthy?(options[:auto_fix])
       @dry_run = truthy?(options[:dry_run])
       @ci = truthy?(options[:ci])
@@ -275,6 +284,14 @@ module GemXray
     def security_github_token
       env_var = security.fetch(:github_token_env, "GITHUB_TOKEN")
       ENV[env_var]
+    end
+
+    def deprecated_enabled?
+      truthy?(deprecated.fetch(:enabled, false))
+    end
+
+    def deprecated_check_readme?
+      truthy?(deprecated.fetch(:check_readme, true))
     end
 
     private

@@ -8,7 +8,8 @@ module GemXray
       version: GemXray::Analyzers::VersionAnalyzer,
       license: GemXray::Analyzers::LicenseAnalyzer,
       archive: GemXray::Analyzers::ArchiveAnalyzer,
-      security: GemXray::Analyzers::SecurityAnalyzer
+      security: GemXray::Analyzers::SecurityAnalyzer,
+      deprecated: GemXray::Analyzers::DeprecatedAnalyzer
     }.freeze
 
     def initialize(config)
@@ -69,6 +70,7 @@ module GemXray
         when :license then config.license_enabled?
         when :archive then config.archive_enabled?
         when :security then config.security_enabled?
+        when :deprecated then config.deprecated_enabled?
         else true
         end
       end

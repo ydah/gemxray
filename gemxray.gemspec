@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email = ["t.yudai92@gmail.com"]
 
   spec.summary = "CLI to analyze Gemfile dependency health."
-  spec.description = "gemxray scans Gemfile, code references, and Gemfile.lock to find unused, redundant, version-redundant, non-compliant, archived, or vulnerable gems."
+  spec.description = "gemxray scans Gemfile, code references, and Gemfile.lock to find unused, redundant, version-redundant, non-compliant, archived, deprecated, or vulnerable gems."
   spec.homepage = "https://github.com/ydah/gemxray"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1.0"

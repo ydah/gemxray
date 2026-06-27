@@ -165,6 +165,17 @@ RSpec.describe GemXray::Result do
       expect(result.cleanup_candidate?).to be true
     end
 
+    it "returns false for deprecated-only findings" do
+      result = build_result(
+        reasons: [
+          described_class::Reason.new(type: :deprecated_yanked, detail: "yanked", severity: :danger)
+        ],
+        severity: :danger
+      )
+
+      expect(result.cleanup_candidate?).to be false
+    end
+
     it "returns false without a Gemfile line" do
       result = build_result(gemfile_line: nil, gemfile_end_line: nil)
 

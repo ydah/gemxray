@@ -6,6 +6,17 @@ RSpec.describe "scan and clean integration" do
   before do
     security_fetcher = instance_double(GemXray::SecurityAdvisoryFetcher, fetch: [])
     allow(GemXray::SecurityAdvisoryFetcher).to receive(:new).and_return(security_fetcher)
+    deprecated_info = GemXray::DeprecatedGemFetcher::GemDeprecationInfo.new(
+      name: "gem",
+      version: "1.0.0",
+      yanked: false,
+      post_install_message: nil,
+      readme_deprecated: false,
+      readme_url: nil,
+      source: :unknown
+    )
+    deprecated_fetcher = instance_double(GemXray::DeprecatedGemFetcher, fetch: deprecated_info)
+    allow(GemXray::DeprecatedGemFetcher).to receive(:new).and_return(deprecated_fetcher)
   end
 
   it "scans a fixture project and applies clean in dry-run mode with previews" do
