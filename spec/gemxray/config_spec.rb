@@ -314,6 +314,26 @@ RSpec.describe GemXray::Config do
     end
   end
 
+  describe "unmaintained config" do
+    it "has sensible defaults" do
+      config = described_class.load(gemfile_path: "/tmp/Gemfile")
+
+      expect(config.unmaintained_enabled?).to be true
+      expect(config.unmaintained_threshold_days).to eq(730)
+      expect(config.unmaintained_overrides).to eq({})
+    end
+
+    it "can set a custom inactivity threshold" do
+      config = described_class.load(
+        gemfile_path: "/tmp/Gemfile",
+        unmaintained: { enabled: true, threshold_days: 365, github_token_env: "MY_TOKEN" }
+      )
+
+      expect(config.unmaintained_enabled?).to be true
+      expect(config.unmaintained_threshold_days).to eq(365)
+    end
+  end
+
   describe "boolean flags" do
     it "treats string 'true' as truthy" do
       config = described_class.load(gemfile_path: "/tmp/Gemfile", ci: "true")

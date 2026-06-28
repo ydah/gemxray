@@ -15,6 +15,8 @@ RSpec.describe GemXray do
     )
     deprecated_fetcher = instance_double(GemXray::DeprecatedGemFetcher, fetch: deprecated_info)
     allow(GemXray::DeprecatedGemFetcher).to receive(:new).and_return(deprecated_fetcher)
+    unmaintained_analyzer = instance_double(GemXray::Analyzers::UnmaintainedAnalyzer, analyze: [])
+    allow(GemXray::Analyzers::UnmaintainedAnalyzer).to receive(:new).and_return(unmaintained_analyzer)
   end
 
   it "has a version number" do

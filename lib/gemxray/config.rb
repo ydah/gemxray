@@ -46,6 +46,12 @@ module GemXray
       deprecated: {
         enabled: true,
         check_readme: true
+      },
+      unmaintained: {
+        enabled: true,
+        threshold_days: 730,
+        github_token_env: "GITHUB_TOKEN",
+        overrides: {}
       }
     }.freeze
     SEVERITY_ORDER = { danger: 0, warning: 1, info: 2 }.freeze
@@ -100,11 +106,17 @@ module GemXray
       deprecated:
         enabled: true
         check_readme: true
+
+      unmaintained:
+        enabled: true
+        threshold_days: 730
+        github_token_env: GITHUB_TOKEN
+        overrides: {}
     YAML
 
     attr_reader :config_path, :gemfile_path, :format, :only, :severity_threshold, :whitelist,
                 :scan_dirs, :overrides, :redundant_depth, :github, :ci_fail_threshold,
-                :license, :archive, :security, :deprecated
+                :license, :archive, :security, :deprecated, :unmaintained
 
     def self.load(options = {})
       raw_options = symbolize_keys(options)
@@ -162,6 +174,7 @@ module GemXray
       @archive = options.fetch(:archive)
       @security = options.fetch(:security)
       @deprecated = options.fetch(:deprecated)
+      @unmaintained = options.fetch(:unmaintained)
       @auto_fix = truthy?(options[:auto_fix])
       @dry_run = truthy?(options[:dry_run])
       @ci = truthy?(options[:ci])
@@ -292,6 +305,23 @@ module GemXray
 
     def deprecated_check_readme?
       truthy?(deprecated.fetch(:check_readme, true))
+    end
+
+    def unmaintained_enabled?
+      truthy?(unmaintained.fetch(:enabled, false))
+    end
+
+    def unmaintained_threshold_days
+      unmaintained.fetch(:threshold_days, 730).to_i
+    end
+
+    def unmaintained_github_token
+      env_var = unmaintained.fetch(:github_token_env, "GITHUB_TOKEN")
+      ENV[env_var]
+    end
+
+    def unmaintained_overrides
+      unmaintained.fetch(:overrides, {})
     end
 
     private

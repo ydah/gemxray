@@ -176,6 +176,17 @@ RSpec.describe GemXray::Result do
       expect(result.cleanup_candidate?).to be false
     end
 
+    it "returns false for unmaintained-only findings" do
+      result = build_result(
+        reasons: [
+          described_class::Reason.new(type: :unmaintained, detail: "stale", severity: :warning)
+        ],
+        severity: :warning
+      )
+
+      expect(result.cleanup_candidate?).to be false
+    end
+
     it "returns false without a Gemfile line" do
       result = build_result(gemfile_line: nil, gemfile_end_line: nil)
 

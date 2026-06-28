@@ -4,9 +4,9 @@
 [![CI](https://github.com/ydah/gemxray/actions/workflows/main.yml/badge.svg)](https://github.com/ydah/gemxray/actions/workflows/main.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`, checks license compliance, detects archived or deprecated dependencies, and reports vulnerable gems.
+A CLI that highlights gems you can likely remove from a Ruby project's `Gemfile`, checks license compliance, detects archived, unmaintained, or deprecated dependencies, and reports vulnerable gems.
 
-GemXray combines seven analyzers to find issues in your Gemfile and lockfile:
+GemXray combines eight analyzers to find issues in your Gemfile and lockfile:
 
 | Analyzer | What it detects | Default |
 | --- | --- | --- |
@@ -17,6 +17,7 @@ GemXray combines seven analyzers to find issues in your Gemfile and lockfile:
 | `archive` | Gem's source repository on GitHub has been archived. | On |
 | `security` | A locked gem version matches a known ruby-advisory-db vulnerability. | On |
 | `deprecated` | RubyGems marks the version yanked, post-install metadata says deprecated, or README says "This gem is deprecated". | On |
+| `unmaintained` | GitHub source repository has had no commits or releases for the configured threshold. | On |
 
 ## Table of Contents
 
@@ -37,6 +38,7 @@ GemXray combines seven analyzers to find issues in your Gemfile and lockfile:
   - [Archive fields](#archive-fields)
   - [Security fields](#security-fields)
   - [Deprecated fields](#deprecated-fields)
+  - [Unmaintained fields](#unmaintained-fields)
 - [Development](#development)
 - [Contributing](#contributing)
 - [License](#license)
@@ -76,7 +78,7 @@ Use structured output for CI or scripts:
 ```bash
 bundle exec gemxray scan --format json --ci --fail-on danger
 bundle exec gemxray scan --only unused,version --severity warning
-bundle exec gemxray scan --only license,archive,security,deprecated
+bundle exec gemxray scan --only license,archive,security,deprecated,unmaintained
 ```
 
 Preview or apply Gemfile cleanup:
@@ -122,8 +124,8 @@ If you run `gemxray` without a command, it behaves as `gemxray scan`.
   Selects the target Gemfile. This also changes the project root used for file edits, `bundle install`, and git operations, because the project root is derived from the Gemfile directory.
 - `--config PATH`
   Loads a specific `.gemxray.yml` instead of the default file in the current working directory.
-- `--only unused,redundant,version,license,archive,security,deprecated`
-  Restricts analysis to the listed analyzers. This accepts a comma-separated list. For example, `--only unused` means `clean` and `pr` only act on unused-gem findings. Using `--only` with `license`, `archive`, `security`, or `deprecated` enables those analyzers even if they are not enabled in config.
+- `--only unused,redundant,version,license,archive,security,deprecated,unmaintained`
+  Restricts analysis to the listed analyzers. This accepts a comma-separated list. For example, `--only unused` means `clean` and `pr` only act on unused-gem findings. Using `--only` with `license`, `archive`, `security`, `deprecated`, or `unmaintained` enables those analyzers even if they are not enabled in config.
 - `--severity info|warning|danger`
   Filters the report to findings at or above the selected severity. This happens before command-specific behavior, so hidden findings are also excluded from `clean`, `pr`, and `scan --ci`.
 - `--format terminal|json|yaml`
@@ -166,7 +168,7 @@ Behavior:
 
 Command-specific options:
 
-- `--auto-fix` -- Skips prompts and removes every cleanup-candidate `danger` finding automatically. `warning`, `info`, security-only findings, and deprecated-only findings are never auto-removed.
+- `--auto-fix` -- Skips prompts and removes every cleanup-candidate `danger` finding automatically. `warning`, `info`, security-only findings, deprecated-only findings, and unmaintained-only findings are never auto-removed.
 - `--dry-run` -- Does not write the Gemfile. Instead, it prints the selected candidates and a preview hunk showing the lines that would be removed or replaced.
 - `--comment` -- Replaces each removed gem entry with a comment such as `# Removed by gemxray: ...` instead of deleting the lines outright.
 - `--bundle`, `--no-bundle` -- After a real edit, `--bundle` runs `bundle install` in the target project. It is skipped automatically during `--dry-run` and when no gems were actually removed.
@@ -252,8 +254,8 @@ bundle exec gemxray scan --help
 
 | Level | Meaning | Auto-fix target |
 | --- | --- | --- |
-| `danger` | High-confidence removal candidate, license violation, known vulnerability, yanked gem version, or unknown license (when `deny_unknown` is enabled). | Yes for cleanup candidates; security/deprecated-only findings are not auto-removed |
-| `warning` | Likely removable, archived repository, deprecated gem, or unknown license. Worth a quick review. | No |
+| `danger` | High-confidence removal candidate, license violation, known vulnerability, yanked gem version, or unknown license (when `deny_unknown` is enabled). | Yes for cleanup candidates; security/deprecated/unmaintained-only findings are not auto-removed |
+| `warning` | Likely removable, archived repository, unmaintained repository, deprecated gem, or unknown license. Worth a quick review. | No |
 | `info` | Informative hint (pinned versions, lower-confidence redundancy). | No |
 
 ## Configuration
@@ -321,6 +323,12 @@ security:
 deprecated:
   enabled: false
   check_readme: true
+
+unmaintained:
+  enabled: false
+  threshold_days: 730
+  github_token_env: GITHUB_TOKEN
+  overrides: {}
 ```
 
 ### Top-level fields
@@ -330,7 +338,7 @@ deprecated:
 | `version` | `1` | Schema marker for future compatibility. Currently accepted but does not change behavior. |
 | `gemfile_path` | `Gemfile` | Path to the target Gemfile. Expanded from the current working directory. |
 | `format` | `terminal` | Output format for `scan`. Accepted: `terminal`, `json`, `yaml`. |
-| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`, `license`, `archive`, `security`, `deprecated`. |
+| `only` | all | Restricts analysis to listed analyzers: `unused`, `redundant`, `version`, `license`, `archive`, `security`, `deprecated`, `unmaintained`. |
 | `severity` | `info` | Minimum severity kept in the report. Also limits what `clean`, `pr`, and `scan --ci` can act on. |
 | `ci` | `false` | Enables CI-style exit codes for `scan`. |
 | `ci_fail_on` | `warning` | Minimum severity that makes `scan --ci` exit with status `1`. |
@@ -343,7 +351,7 @@ deprecated:
 | `redundant_depth` | `2` | Maximum dependency depth for the `redundant` analyzer in `Gemfile.lock`. |
 | `overrides` | `{}` | Per-gem overrides keyed by gem name. |
 
-Security-only and deprecated-only findings are reported by `scan` but are not treated as Gemfile cleanup candidates by `clean` or `pr`. Update the affected gem, update the parent dependency that brings it in, replace it with a maintained alternative, or remove it manually if it is also unused.
+Security-only, deprecated-only, and unmaintained-only findings are reported by `scan` but are not treated as Gemfile cleanup candidates by `clean` or `pr`. Update the affected gem, update the parent dependency that brings it in, replace it with a maintained alternative, or remove it manually if it is also unused.
 
 ### Override fields
 
@@ -401,6 +409,17 @@ The `deprecated` analyzer runs by default. Disable it with `--only unused,redund
 | --- | --- | --- |
 | `deprecated.enabled` | `true` | Include the `deprecated` analyzer in default scans. |
 | `deprecated.check_readme` | `true` | Fetch GitHub README files referenced by RubyGems metadata and flag the gem when README contains `This gem is deprecated`. |
+
+### Unmaintained fields
+
+The `unmaintained` analyzer runs by default. Disable it with `--only unused,redundant,version` or set `unmaintained.enabled: false` in config.
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `unmaintained.enabled` | `true` | Include the `unmaintained` analyzer in default scans. |
+| `unmaintained.threshold_days` | `730` | Minimum inactivity period before a repository is reported. The analyzer compares this against the newest GitHub repository push time and latest release publish time. |
+| `unmaintained.github_token_env` | `GITHUB_TOKEN` | Name of the environment variable containing a GitHub personal access token. Without a token, public repositories can still be checked but rate limits are stricter. |
+| `unmaintained.overrides` | `{}` | Manual gem-to-repository mappings (`gem_name: "owner/repo"`) for gems whose metadata does not point to the correct GitHub repository. |
 
 ## Development
 

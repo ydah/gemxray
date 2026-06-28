@@ -17,6 +17,8 @@ RSpec.describe GemXray::CLI do
     )
     deprecated_fetcher = instance_double(GemXray::DeprecatedGemFetcher, fetch: deprecated_info)
     allow(GemXray::DeprecatedGemFetcher).to receive(:new).and_return(deprecated_fetcher)
+    unmaintained_analyzer = instance_double(GemXray::Analyzers::UnmaintainedAnalyzer, analyze: [])
+    allow(GemXray::Analyzers::UnmaintainedAnalyzer).to receive(:new).and_return(unmaintained_analyzer)
   end
 
   def build_report(results)
@@ -155,6 +157,7 @@ RSpec.describe GemXray::CLI do
     expect(out.string).to include("Usage: gemxray scan [options]")
     expect(out.string).to include("security")
     expect(out.string).to include("deprecated")
+    expect(out.string).to include("unmaintained")
     expect(err.string).to eq("")
   end
 
@@ -239,6 +242,48 @@ RSpec.describe GemXray::CLI do
       expect(code).to eq(0)
       expect(out.string).to include("No removable gems were selected.")
       expect(File.read(gemfile_path)).to include('gem "old_gem"')
+    end
+  end
+
+  it "does not treat unmaintained-only findings as clean targets" do
+    with_project(
+      "Gemfile" => <<~RUBY
+        source "https://rubygems.org"
+
+        gem "stale_gem"
+      RUBY
+    ) do |project_dir|
+      gemfile_path = File.join(project_dir, "Gemfile")
+      report = build_report(
+        [
+          GemXray::Result.new(
+            gem_name: "stale_gem",
+            gemfile_line: 3,
+            reasons: [
+              GemXray::Result::Reason.new(
+                type: :unmaintained,
+                detail: "source repository appears unmaintained",
+                severity: :warning
+              )
+            ],
+            severity: :warning
+          )
+        ]
+      )
+      scanner = instance_double(GemXray::Scanner, run: report)
+      allow(GemXray::Scanner).to receive(:new).and_return(scanner)
+
+      out = StringIO.new
+      code = described_class.start(
+        ["clean", "--gemfile", gemfile_path],
+        out: out,
+        err: StringIO.new,
+        stdin: StringIO.new
+      )
+
+      expect(code).to eq(0)
+      expect(out.string).to include("No removable gems were selected.")
+      expect(File.read(gemfile_path)).to include('gem "stale_gem"')
     end
   end
 
